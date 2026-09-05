@@ -1,0 +1,56 @@
+name: bus_ticket_system
+description: A Bus Ticket Management System for Windows & Web
+publish_to: "none"
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  #URL 
+  url_launcher: ^6.1.11
+
+  # STATE MANAGEMENT
+  provider: ^6.1.2
+
+  # SQLITE (WINDOWS + LINUX + ANDROID)
+  sqflite: ^2.3.3
+  sqflite_common_ffi: ^2.3.2+1
+  path: ^1.9.0
+
+  # UI & FONTS
+  google_fonts: ^6.3.0
+  animated_text_kit: ^4.2.2
+  iconsax: ^0.0.8
+
+  # DATE FORMATTING
+  intl: ^0.19.0
+
+  # SCREENSHOT + SHARE
+  screenshot: ^3.0.0
+  share_plus: ^7.2.1
+  image_picker: ^1.2.1
+
+  # SUPABASE & FIREBASE
+  supabase_flutter: ^2.8.3
+  firebase_core: ^3.12.1
+  firebase_auth: ^5.5.1
+  firebase_messaging: ^15.2.4
+
+  # PATH PROVIDER
+  path_provider: ^2.1.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/bus_welcome.png
+    - assets/images/lock.png

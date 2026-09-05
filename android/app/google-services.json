@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "571944175728",
+    "project_id": "busverse-app",
+    "storage_bucket": "busverse-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:571944175728:android:65f1d5241fd117d0afccb5",
+        "android_client_info": {
+          "package_name": "com.busverse.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD4lQ2euwoeGwoRrY0jCk0CZ4_u_3L9QIE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
