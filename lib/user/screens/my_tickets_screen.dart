@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:bus_ticket_system/database/db_helper.dart';
 import 'package:bus_ticket_system/services/supabase_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:bus_ticket_system/services/notification_service.dart';
 import 'view_ticket_screen.dart';
 
 class MyTicketsScreen extends StatefulWidget {
@@ -66,12 +67,13 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProv
     final String defaultUserPhone = userProfile?['phone'] ?? "";
     final String defaultUserCnic = userProfile?['cnic'] ?? "";
 
-    // 1. Fetch from local SQLite Bookings
+    // 1. Fetch from local SQLite Bookings (Primary Single Source of Truth)
     try {
       final localBookings = await DBHelper.instance.getUserBookings(widget.userId);
       for (var b in localBookings) {
         combined.add({
           ...b,
+          'source': 'booking',
           'passengerName': defaultUserName.isNotEmpty ? defaultUserName : "Valued Customer",
           'passengerPhone': defaultUserPhone,
           'passengerCnic': defaultUserCnic,
@@ -82,22 +84,19 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProv
       print("Error loading SQLite bookings: $e");
     }
 
-    // 2. Fetch from local SQLite Payments table
-    try {
-      final payments = await DBHelper.instance.getPayments();
-      for (var p in payments) {
-        if (p['email'] == widget.userEmail || widget.userEmail.isEmpty || widget.userId == 0) {
-          // Check if already in combined
-          bool exists = combined.any((b) =>
-              b['bookingId'] == p['id'] ||
-              (b['busId'] != null && b['busId'] == p['busId'] && b['travelDate'] == p['date']));
-          if (!exists) {
+    // 2. Fallback to Payments table ONLY IF no bookings found in bookings table
+    if (combined.isEmpty) {
+      try {
+        final payments = await DBHelper.instance.getPayments();
+        for (var p in payments) {
+          if (p['email'] == widget.userEmail || widget.userEmail.isEmpty || widget.userId == 0) {
             Map<String, dynamic>? bus;
             if (p['busId'] != null && p['busId'] is int) {
               bus = await DBHelper.instance.getBusById(p['busId'] as int);
             }
 
             combined.add({
+              'source': 'payment',
               'bookingId': p['id'],
               'busId': p['busId'],
               'seatNumber': p['seats'] ?? "N/A",
@@ -105,7 +104,8 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProv
               'bookingDate': p['date'] ?? "",
               'status': 'booked',
               'busName': bus?['busName'] ?? "Junaid Movers",
-              'fromCity': bus?['fromCity'] ?? "Departure",
+              'fromCity': bus?['fromCity'] ?? "Multan",
+              'toCity': bus?['toCity'] ?? "Lahore",
               'travelDate': (bus?['date'] != null && bus!['date'].toString().trim().isNotEmpty)
                   ? bus['date'].toString().trim()
                   : (p['date'] ?? ""),
@@ -128,56 +128,120 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProv
             });
           }
         }
+      } catch (e) {
+        print("Error loading payments fallback: $e");
       }
-    } catch (e) {
-      print("Error loading payments: $e");
     }
 
     // 3. Cloud Supabase Sync (if user is logged in with Firebase)
-    try {
-      final currentUid = FirebaseAuth.instance.currentUser?.uid;
-      if (currentUid != null) {
-        final cloudBookings = await SupabaseService.instance.getUserBookings(currentUid);
-        for (var cb in cloudBookings) {
-          final bus = cb['buses'] ?? {};
-          combined.add({
-            'bookingId': cb['id'],
-            'seatNumber': cb['seat_number']?.toString() ?? "N/A",
-            'passengerGender': cb['gender'] ?? "M",
-            'bookingDate': cb['booking_date'] ?? "",
-            'status': cb['status'] ?? 'booked',
-            'busName': bus['busName'] ?? "Junaid Movers",
-            'fromCity': bus['fromCity'] ?? "Departure",
-            'toCity': bus['toCity'] ?? "Destination",
-            'travelDate': bus['date'] ?? cb['booking_date'] ?? "",
-            'time': bus['time'] ?? "Scheduled",
-            'busClass': bus['busClass'] ?? "Executive",
-            'busNumber': bus['busNumber'] ?? "JND-101",
-            'fare': (bus['fare'] is num) ? (bus['fare'] as num).toDouble() : 0.0,
-            'passengerName': defaultUserName,
-            'passengerPhone': defaultUserPhone,
-            'passengerCnic': defaultUserCnic,
-            'paymentMethod': "Paid Online",
-          });
+    if (combined.isEmpty) {
+      try {
+        final currentUid = FirebaseAuth.instance.currentUser?.uid;
+        if (currentUid != null) {
+          final cloudBookings = await SupabaseService.instance.getUserBookings(currentUid);
+          for (var cb in cloudBookings) {
+            final bus = cb['buses'] ?? {};
+            combined.add({
+              'source': 'cloud',
+              'bookingId': cb['id'],
+              'seatNumber': cb['seat_number']?.toString() ?? "N/A",
+              'passengerGender': cb['gender'] ?? "M",
+              'bookingDate': cb['booking_date'] ?? "",
+              'status': cb['status'] ?? 'booked',
+              'busName': bus['busName'] ?? "Junaid Movers",
+              'fromCity': bus['fromCity'] ?? "Multan",
+              'toCity': bus['toCity'] ?? "Lahore",
+              'travelDate': bus['date'] ?? cb['booking_date'] ?? "",
+              'time': bus['time'] ?? "Scheduled",
+              'busClass': bus['busClass'] ?? "Executive",
+              'busNumber': bus['busNumber'] ?? "JND-101",
+              'fare': (bus['fare'] is num) ? (bus['fare'] as num).toDouble() : 0.0,
+              'passengerName': defaultUserName,
+              'passengerPhone': defaultUserPhone,
+              'passengerCnic': defaultUserCnic,
+              'paymentMethod': "Paid Online",
+            });
+          }
         }
+      } catch (e) {
+        print("Error loading cloud bookings: $e");
       }
-    } catch (e) {
-      print("Error loading cloud bookings: $e");
+    }
+
+    // Strict Deduplication
+    final Set<String> seenKeys = {};
+    final List<Map<String, dynamic>> deduped = [];
+
+    for (var ticket in combined) {
+      final String bId = (ticket['bookingId'] ?? '').toString();
+      final String seatNum = ticket['seatNumber']?.toString().replaceAll('#', '').trim() ?? '';
+      final String date = _formatDateOnly(ticket['travelDate']?.toString() ?? ticket['bookingDate']?.toString());
+      final String from = ticket['fromCity']?.toString().toLowerCase().trim() ?? '';
+      final String to = ticket['toCity']?.toString().toLowerCase().trim() ?? '';
+
+      final String seatKey = "$from-$to-$date-seat-$seatNum";
+      final String idKey = "ref-$bId";
+
+      if (!seenKeys.contains(seatKey) && !seenKeys.contains(idKey)) {
+        seenKeys.add(seatKey);
+        seenKeys.add(idKey);
+        deduped.add(ticket);
+      }
     }
 
     if (mounted) {
       setState(() {
-        _allTickets = combined;
+        _allTickets = deduped;
         _isLoading = false;
       });
     }
   }
 
-  Future<void> _cancelTicket(int bookingId) async {
-    final bool success = await DBHelper.instance.cancelBooking(bookingId, widget.userId);
+  Future<void> _cancelTicket(Map<String, dynamic> ticket) async {
+    final String source = ticket['source'] ?? 'booking';
+    final int bId = (ticket['bookingId'] is int)
+        ? ticket['bookingId']
+        : int.tryParse(ticket['bookingId']?.toString() ?? '0') ?? 0;
+    final int? busId = (ticket['busId'] is int)
+        ? ticket['busId']
+        : int.tryParse(ticket['busId']?.toString() ?? '');
+
+    final bool success = await DBHelper.instance.cancelBooking(
+      bookingId: bId,
+      source: source,
+      busId: busId,
+      seatNumber: ticket['seatNumber'],
+      userId: widget.userId,
+      email: widget.userEmail,
+    );
+
+    // Cancel in Supabase Cloud if available
+    try {
+      final currentUid = FirebaseAuth.instance.currentUser?.uid;
+      if (currentUid != null) {
+        await SupabaseService.instance.cancelBooking(bId.toString());
+      }
+    } catch (_) {}
+
     if (!mounted) return;
 
     if (success) {
+      // Trigger Realtime Cancellation Notification
+      try {
+        final String from = ticket['fromCity'] ?? 'Departure';
+        final String to = ticket['toCity'] ?? 'Destination';
+        final String seatStr = ticket['seatNumber']?.toString() ?? '';
+        final String dateStr = ticket['travelDate']?.toString() ?? ticket['bookingDate']?.toString() ?? '';
+        NotificationService.instance.showCancellationNotification(
+          fromCity: from,
+          toCity: to,
+          seatNumber: seatStr,
+          date: dateStr,
+        );
+      } catch (e) {
+        debugPrint("Notification error on cancellation: $e");
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Ticket cancelled successfully. Refund initiated to wallet."),
@@ -615,10 +679,10 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProv
                       label: const Text("E-Ticket", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
                     ),
 
-                    if (isActive && bookingId > 0) ...[
+                    if (isActive && (bookingId > 0 || (t['busId'] != null))) ...[
                       const SizedBox(width: 6),
                       OutlinedButton(
-                        onPressed: () => _showCancelDialog(bookingId, fromCity, toCity),
+                        onPressed: () => _showCancelDialog(t),
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: Colors.redAccent, width: 1),
                           foregroundColor: Colors.redAccent,
@@ -656,7 +720,10 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProv
     );
   }
 
-  void _showCancelDialog(int bookingId, String fromCity, String toCity) {
+  void _showCancelDialog(Map<String, dynamic> ticket) {
+    final String fromCity = ticket['fromCity'] ?? "Departure";
+    final String toCity = ticket['toCity'] ?? "Destination";
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -685,7 +752,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProv
             ),
             onPressed: () {
               Navigator.pop(ctx);
-              _cancelTicket(bookingId);
+              _cancelTicket(ticket);
             },
             child: const Text("Yes, Cancel Ticket"),
           ),

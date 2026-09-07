@@ -18,7 +18,8 @@ class SupabaseService {
           .eq('date', date)
           .order('time', ascending: true);
 
-      return (response as List).map((e) => BusModel.fromMap(e)).toList();
+      final buses = (response as List).map((e) => BusModel.fromMap(e)).toList();
+      return buses.where((bus) => !bus.isExpired).toList();
     } catch (e) {
       print('Error fetching buses from Supabase: $e');
       return [];
@@ -44,7 +45,8 @@ class SupabaseService {
       }
 
       final response = await query.order('time', ascending: true);
-      return (response as List).map((e) => BusModel.fromMap(e)).toList();
+      final buses = (response as List).map((e) => BusModel.fromMap(e)).toList();
+      return buses.where((bus) => !bus.isExpired).toList();
     } catch (e) {
       print('Error searching buses from Supabase: $e');
       return [];
@@ -153,6 +155,16 @@ class SupabaseService {
     } catch (e) {
       print('Error fetching user bookings: $e');
       return [];
+    }
+  }
+
+  Future<bool> cancelBooking(dynamic bookingId) async {
+    try {
+      await client.from('bookings').delete().eq('id', bookingId);
+      return true;
+    } catch (e) {
+      print('Error cancelling booking in Supabase: $e');
+      return false;
     }
   }
 

@@ -124,4 +124,82 @@ class BusModel {
       'createdAt': createdAt,
     };
   }
+
+  /// ⏰ Check if bus departure date/time is in the past
+  bool get isExpired => isBusExpired(date, time);
+
+  static bool isBusExpired(String dateStr, String timeStr) {
+    if (dateStr.isEmpty) return false;
+    try {
+      final now = DateTime.now();
+
+      // 1. Parse Date (Supports yyyy-MM-dd, dd-MM-yyyy, yyyy/MM/dd, etc.)
+      DateTime? busDate;
+      if (dateStr.contains('-')) {
+        final parts = dateStr.split('-');
+        if (parts.length == 3) {
+          if (parts[0].length == 4) {
+            busDate = DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+          } else {
+            busDate = DateTime(int.parse(parts[2]), int.parse(parts[1]), int.parse(parts[0]));
+          }
+        }
+      } else if (dateStr.contains('/')) {
+        final parts = dateStr.split('/');
+        if (parts.length == 3) {
+          if (parts[0].length == 4) {
+            busDate = DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+          } else {
+            busDate = DateTime(int.parse(parts[2]), int.parse(parts[1]), int.parse(parts[0]));
+          }
+        }
+      }
+
+      busDate ??= DateTime.tryParse(dateStr);
+      if (busDate == null) return false;
+
+      final today = DateTime(now.year, now.month, now.day);
+      final busDay = DateTime(busDate.year, busDate.month, busDate.day);
+
+      // If departure day was yesterday or earlier, it's expired
+      if (busDay.isBefore(today)) {
+        return true;
+      }
+      // If departure day is tomorrow or later, it's NOT expired
+      if (busDay.isAfter(today)) {
+        return false;
+      }
+
+      // If departure day is TODAY: check departure time
+      if (timeStr.isEmpty) return false;
+
+      int hour = 0;
+      int minute = 0;
+
+      String cleanTime = timeStr.trim().toUpperCase();
+      final bool isPM = cleanTime.contains('PM');
+      final bool isAM = cleanTime.contains('AM');
+
+      cleanTime = cleanTime.replaceAll('AM', '').replaceAll('PM', '').trim();
+      final timeParts = cleanTime.split(':');
+
+      if (timeParts.isNotEmpty) {
+        hour = int.tryParse(timeParts[0].trim()) ?? 0;
+        if (timeParts.length > 1) {
+          final minPart = timeParts[1].trim().split(' ')[0];
+          minute = int.tryParse(minPart) ?? 0;
+        }
+
+        if (isPM && hour < 12) {
+          hour += 12;
+        } else if (isAM && hour == 12) {
+          hour = 0;
+        }
+
+        final departureDateTime = DateTime(busDate.year, busDate.month, busDate.day, hour, minute);
+        return departureDateTime.isBefore(now);
+      }
+    } catch (_) {}
+    return false;
+  }
 }

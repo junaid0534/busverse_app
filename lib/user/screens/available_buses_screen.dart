@@ -78,8 +78,13 @@ class _AvailableBusesUserScreenState extends State<AvailableBusesUserScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final String fromCity = widget.buses.isNotEmpty ? widget.buses.first.fromCity : "Departure";
-    final String toCity = widget.buses.isNotEmpty ? widget.buses.first.toCity : "Destination";
+    final activeBuses = widget.buses.where((bus) => !bus.isExpired).toList();
+    final String fromCity = activeBuses.isNotEmpty
+        ? activeBuses.first.fromCity
+        : (widget.buses.isNotEmpty ? widget.buses.first.fromCity : "Departure");
+    final String toCity = activeBuses.isNotEmpty
+        ? activeBuses.first.toCity
+        : (widget.buses.isNotEmpty ? widget.buses.first.toCity : "Destination");
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -147,7 +152,7 @@ class _AvailableBusesUserScreenState extends State<AvailableBusesUserScreen> {
                 const Icon(Icons.directions_bus_rounded, color: primaryBlue, size: 18),
                 const SizedBox(width: 8),
                 Text(
-                  "${widget.buses.length} Buses Available",
+                  "${activeBuses.length} Buses Available",
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
@@ -173,15 +178,15 @@ class _AvailableBusesUserScreenState extends State<AvailableBusesUserScreen> {
 
           // ─── BUSES LIST ───
           Expanded(
-            child: widget.buses.isEmpty
+            child: activeBuses.isEmpty
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.directions_bus_outlined, size: 56, color: Colors.grey.shade400),
+                        Icon(Icons.departure_board_rounded, size: 56, color: Colors.grey.shade400),
                         const SizedBox(height: 12),
                         const Text(
-                          "No buses found for this route & date",
+                          "No upcoming buses available",
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
@@ -190,7 +195,8 @@ class _AvailableBusesUserScreenState extends State<AvailableBusesUserScreen> {
                         ),
                         const SizedBox(height: 6),
                         const Text(
-                          "Try searching for another date or route",
+                          "All scheduled buses for today have departed.\nPlease search for an upcoming date.",
+                          textAlign: TextAlign.center,
                           style: TextStyle(fontSize: 13, color: subText),
                         ),
                       ],
@@ -198,11 +204,11 @@ class _AvailableBusesUserScreenState extends State<AvailableBusesUserScreen> {
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    itemCount: widget.buses.length,
+                    itemCount: activeBuses.length,
                     itemBuilder: (context, index) {
                       return _AnimatedBusCard(
-                        bus: widget.buses[index],
-                        bookedCount: bookedSeatsCount[widget.buses[index].id ?? 0] ?? 0,
+                        bus: activeBuses[index],
+                        bookedCount: bookedSeatsCount[activeBuses[index].id ?? 0] ?? 0,
                         selectedDate: widget.selectedDate,
                         userId: widget.userId,
                         onSeatsUpdated: _loadBookedSeatsCount,

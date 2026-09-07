@@ -3,6 +3,7 @@ import 'package:bus_ticket_system/database/db_helper.dart';
 import 'package:bus_ticket_system/admin/models/bus_model.dart';
 import 'package:bus_ticket_system/services/supabase_service.dart';
 import 'package:bus_ticket_system/user/screens/available_buses_screen.dart';
+import 'package:bus_ticket_system/user/screens/no_bus_found_screen.dart';
 
 class SearchBusScreen extends StatefulWidget {
   const SearchBusScreen({super.key});
@@ -182,16 +183,25 @@ class _SearchBusScreenState extends State<SearchBusScreen> {
       final List<BusModel> localBuses =
           rawBuses.map((e) => BusModel.fromMap(e)).toList();
       filteredBuses =
-          localBuses.where((bus) => bus.date == formattedDate).toList();
+          localBuses.where((bus) => bus.date == formattedDate && !bus.isExpired).toList();
     }
+
+    // Final safety check: remove any expired buses
+    filteredBuses = filteredBuses.where((bus) => !bus.isExpired).toList();
 
     if (!mounted) return;
 
     if (filteredBuses.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("No buses found from $fromCity to $toCity on ${dateController.text}"),
-          backgroundColor: Colors.orange,
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => NoBusFoundScreen(
+            fromCity: fromCity,
+            toCity: toCity,
+            selectedDate: selectedDate!,
+            busClass: selectedBusType,
+            userId: userId,
+          ),
         ),
       );
       return;

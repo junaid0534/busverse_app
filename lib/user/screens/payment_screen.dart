@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:bus_ticket_system/admin/models/bus_model.dart';
 import 'package:bus_ticket_system/database/db_helper.dart';
 import 'package:bus_ticket_system/services/supabase_service.dart';
+import 'package:bus_ticket_system/services/notification_service.dart';
 import 'view_ticket_screen.dart';
 import 'passenger_detail_screen.dart';
 
@@ -1489,6 +1490,24 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
     final String travelDate = (widget.bus.date.isNotEmpty && widget.bus.date != "0000-00-00")
         ? widget.bus.date
         : widget.date;
+
+    // 5. Trigger Realtime Push / Local Notification
+    try {
+      await NotificationService.instance.showBookingNotification(
+        busName: widget.bus.busName.isNotEmpty ? widget.bus.busName : "Junaid Movers",
+        fromCity: widget.bus.fromCity.isNotEmpty ? widget.bus.fromCity : "Departure",
+        toCity: widget.bus.toCity.isNotEmpty ? widget.bus.toCity : "Destination",
+        seats: widget.selectedSeats,
+        date: travelDate,
+        passengerName: passengerName,
+        fare: totalAmount,
+        refId: "BV-${widget.bus.id ?? 101}",
+      );
+    } catch (e) {
+      debugPrint("Notification error on booking: $e");
+    }
+
+    if (!mounted) return;
 
     Navigator.pushReplacement(
       context,

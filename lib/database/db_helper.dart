@@ -34,7 +34,7 @@ class DBHelper {
     return await databaseFactory.openDatabase(
       path,
       options: OpenDatabaseOptions(
-        version: 12,
+        version: 13,
         onCreate: _createDB,
         onUpgrade: _onUpgrade,
       ),
@@ -150,6 +150,22 @@ class DBHelper {
         date TEXT
       );
     ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        userId INTEGER,
+        userEmail TEXT,
+        title TEXT,
+        body TEXT,
+        type TEXT,
+        timestamp TEXT,
+        isRead INTEGER DEFAULT 0,
+        routeFrom TEXT,
+        routeTo TEXT,
+        dataJson TEXT
+      );
+    ''');
   }
 
   // ============================================================
@@ -180,6 +196,23 @@ class DBHelper {
       await db.execute('ALTER TABLE users ADD COLUMN city TEXT;');
       await db.execute('ALTER TABLE users ADD COLUMN region TEXT;');
       await db.execute('ALTER TABLE users ADD COLUMN zip TEXT;');
+    }
+    if (oldVersion < 13) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS notifications (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          userId INTEGER,
+          userEmail TEXT,
+          title TEXT,
+          body TEXT,
+          type TEXT,
+          timestamp TEXT,
+          isRead INTEGER DEFAULT 0,
+          routeFrom TEXT,
+          routeTo TEXT,
+          dataJson TEXT
+        );
+      ''');
     }
   }
 
@@ -492,18 +525,176 @@ class DBHelper {
     ''', [userId]);
   }
 
-  Future<bool> cancelBooking(int bookingId, int userId) async {
+  Future<List<Map<String, dynamic>>> getAllBuses() async {
     final db = await database;
-    final check = await db.query(
-      'bookings',
-      where: 'id = ? AND userId = ? AND status = ?',
-      whereArgs: [bookingId, userId, 'booked'],
-    );
+    return await db.query('buses', orderBy: 'date ASC, time ASC');
+  }
 
-    if (check.isEmpty) return false;
+  Future<List<Map<String, dynamic>>> getAllBookingsAdmin({int? limit}) async {
+    final db = await database;
+    String query = '''
+      SELECT 
+        bk.id AS bookingId,
+        bk.seatNumber,
+        bk.gender AS passengerGender,
+        bk.bookingDate,
+        bk.status,
+        bk.userId,
+        bus.id AS busId,
+        bus.busName,
+        bus.busNumber,
+        bus.fromCity,
+        bus.toCity,
+        bus.routeVia,
+        bus.date AS travelDate,
+        bus.time,
+        bus.busClass,
+        bus.fare,
+        u.firstName,
+        u.lastName,
+        u.email AS userEmail,
+        u.phone AS userPhone
+      FROM bookings bk
+      LEFT JOIN buses bus ON bk.busId = bus.id
+      LEFT JOIN users u ON bk.userId = u.id
+      ORDER BY bk.id DESC
+    ''';
+    if (limit != null && limit > 0) {
+      query += ' LIMIT $limit';
+    }
+    return await db.rawQuery(query);
+  }
 
-    await db.delete('bookings', where: 'id = ? AND userId = ?', whereArgs: [bookingId, userId]);
-    return true;
+  Future<Map<String, dynamic>> getAdminStats() async {
+    final db = await database;
+    try {
+      final busesCountRes = await db.rawQuery('SELECT COUNT(*) as count FROM buses');
+      final routesCountRes = await db.rawQuery('SELECT COUNT(*) as count FROM routes');
+      final usersCountRes = await db.rawQuery('SELECT COUNT(*) as count FROM users');
+      final bookingsCountRes = await db.rawQuery('SELECT COUNT(*) as count FROM bookings');
+      final complainsCountRes = await db.rawQuery('SELECT COUNT(*) as count FROM complain');
+      final feedbacksCountRes = await db.rawQuery('SELECT COUNT(*) as count FROM feedback');
+      final revenueRes = await db.rawQuery('SELECT SUM(amount) as total FROM payments');
+      
+      final todayStr = DateTime.now().toIso8601String().split('T')[0];
+      final todayBookingsRes = await db.rawQuery(
+        'SELECT COUNT(*) as count FROM bookings WHERE bookingDate = ?',
+        [todayStr],
+      );
+
+      final int totalBuses = (busesCountRes.isNotEmpty && busesCountRes.first['count'] != null)
+          ? (busesCountRes.first['count'] as num).toInt()
+          : 0;
+      final int totalRoutes = (routesCountRes.isNotEmpty && routesCountRes.first['count'] != null)
+          ? (routesCountRes.first['count'] as num).toInt()
+          : 0;
+      final int totalUsers = (usersCountRes.isNotEmpty && usersCountRes.first['count'] != null)
+          ? (usersCountRes.first['count'] as num).toInt()
+          : 0;
+      final int totalBookings = (bookingsCountRes.isNotEmpty && bookingsCountRes.first['count'] != null)
+          ? (bookingsCountRes.first['count'] as num).toInt()
+          : 0;
+      final int totalComplaints = (complainsCountRes.isNotEmpty && complainsCountRes.first['count'] != null)
+          ? (complainsCountRes.first['count'] as num).toInt()
+          : 0;
+      final int totalFeedbacks = (feedbacksCountRes.isNotEmpty && feedbacksCountRes.first['count'] != null)
+          ? (feedbacksCountRes.first['count'] as num).toInt()
+          : 0;
+      final int todayBookings = (todayBookingsRes.isNotEmpty && todayBookingsRes.first['count'] != null)
+          ? (todayBookingsRes.first['count'] as num).toInt()
+          : 0;
+
+      double totalRevenue = 0.0;
+      if (revenueRes.isNotEmpty && revenueRes.first['total'] != null) {
+        totalRevenue = (revenueRes.first['total'] as num).toDouble();
+      }
+
+      return {
+        'totalBuses': totalBuses,
+        'totalRoutes': totalRoutes,
+        'totalUsers': totalUsers,
+        'totalBookings': totalBookings,
+        'totalComplaints': totalComplaints,
+        'totalFeedbacks': totalFeedbacks,
+        'todayBookings': todayBookings,
+        'totalRevenue': totalRevenue,
+      };
+    } catch (e) {
+      print('Error getting admin stats: $e');
+      return {
+        'totalBuses': 0,
+        'totalRoutes': 0,
+        'totalUsers': 0,
+        'totalBookings': 0,
+        'totalComplaints': 0,
+        'totalFeedbacks': 0,
+        'todayBookings': 0,
+        'totalRevenue': 0.0,
+      };
+    }
+  }
+
+  Future<bool> cancelBooking({
+    required int bookingId,
+    String? source,
+    int? busId,
+    dynamic seatNumber,
+    int userId = 0,
+    String? email,
+  }) async {
+    final db = await database;
+
+    try {
+      if (source == 'payment') {
+        // 1. Delete ONLY this specific payment record by its unique ID
+        await db.delete('payments', where: 'id = ?', whereArgs: [bookingId]);
+
+        // 2. Unblock ONLY one matching booking seat for this bus
+        if (busId != null && busId > 0 && seatNumber != null) {
+          String sStr = seatNumber.toString().replaceAll('#', '').trim();
+          int? sInt = int.tryParse(sStr);
+          if (sInt != null) {
+            final bRows = await db.query(
+              'bookings',
+              columns: ['id'],
+              where: 'busId = ? AND seatNumber = ?',
+              whereArgs: [busId, sInt],
+              limit: 1,
+            );
+            if (bRows.isNotEmpty) {
+              await db.delete('bookings', where: 'id = ?', whereArgs: [bRows.first['id']]);
+            }
+          }
+        }
+      } else {
+        // 1. Delete ONLY this specific booking record by its unique ID
+        await db.delete('bookings', where: 'id = ?', whereArgs: [bookingId]);
+
+        // 2. Delete ONLY the corresponding single payment if matched
+        if (busId != null && busId > 0 && seatNumber != null) {
+          String sStr = seatNumber.toString().replaceAll('#', '').trim();
+          final pRows = await db.query(
+            'payments',
+            columns: ['id'],
+            where: 'busId = ? AND (seats = ? OR seats LIKE ?)',
+            whereArgs: [busId, sStr, '%$sStr%'],
+            limit: 1,
+          );
+          if (pRows.isNotEmpty) {
+            await db.delete('payments', where: 'id = ?', whereArgs: [pRows.first['id']]);
+          }
+        }
+      }
+
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Backward compatibility wrapper
+  Future<bool> cancelBookingById(int bookingId, int userId) async {
+    return await cancelBooking(bookingId: bookingId, userId: userId);
   }
 
   Future<int> insertPayment({
@@ -585,4 +776,159 @@ class DBHelper {
   }
 
   Future<void> insertSupportMessage({required String type, required String message}) async {}
+
+  // ============================================================
+  // NOTIFICATIONS CRUD & MANAGEMENT
+  // ============================================================
+  Future<void> ensureNotificationsTable() async {
+    final db = await database;
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        userId INTEGER,
+        userEmail TEXT,
+        title TEXT,
+        body TEXT,
+        type TEXT,
+        timestamp TEXT,
+        isRead INTEGER DEFAULT 0,
+        routeFrom TEXT,
+        routeTo TEXT,
+        dataJson TEXT
+      );
+    ''');
+  }
+
+  Future<int> insertNotification({
+    int? userId,
+    String? userEmail,
+    required String title,
+    required String body,
+    String type = 'system',
+    String? routeFrom,
+    String? routeTo,
+    String? dataJson,
+  }) async {
+    try {
+      await ensureNotificationsTable();
+      final db = await database;
+      return await db.insert('notifications', {
+        'userId': userId ?? 0,
+        'userEmail': userEmail ?? '',
+        'title': title,
+        'body': body,
+        'type': type,
+        'timestamp': DateTime.now().toIso8601String(),
+        'isRead': 0,
+        'routeFrom': routeFrom ?? '',
+        'routeTo': routeTo ?? '',
+        'dataJson': dataJson ?? '',
+      });
+    } catch (e) {
+      print('Error inserting notification: $e');
+      return 0;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getNotifications({
+    int? userId,
+    String? userEmail,
+    String? typeFilter,
+  }) async {
+    try {
+      await ensureNotificationsTable();
+      final db = await database;
+
+      String whereClause = '';
+      List<dynamic> whereArgs = [];
+
+      if (typeFilter != null && typeFilter.isNotEmpty && typeFilter != 'all') {
+        whereClause = 'type = ?';
+        whereArgs.add(typeFilter.toLowerCase());
+      }
+
+      return await db.query(
+        'notifications',
+        where: whereClause.isNotEmpty ? whereClause : null,
+        whereArgs: whereArgs.isNotEmpty ? whereArgs : null,
+        orderBy: 'id DESC',
+      );
+    } catch (e) {
+      print('Error getting notifications: $e');
+      return [];
+    }
+  }
+
+  Future<int> getUnreadNotificationsCount({int? userId, String? userEmail}) async {
+    try {
+      await ensureNotificationsTable();
+      final db = await database;
+      final result = await db.rawQuery(
+        'SELECT COUNT(*) as count FROM notifications WHERE isRead = 0',
+      );
+      if (result.isNotEmpty && result.first['count'] != null) {
+        return (result.first['count'] as num).toInt();
+      }
+      return 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  Future<int> markNotificationAsRead(int id) async {
+    try {
+      await ensureNotificationsTable();
+      final db = await database;
+      return await db.update(
+        'notifications',
+        {'isRead': 1},
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+    } catch (e) {
+      print('Error marking notification as read: $e');
+      return 0;
+    }
+  }
+
+  Future<int> markAllNotificationsAsRead({int? userId, String? userEmail}) async {
+    try {
+      await ensureNotificationsTable();
+      final db = await database;
+      return await db.update(
+        'notifications',
+        {'isRead': 1},
+        where: 'isRead = 0',
+      );
+    } catch (e) {
+      print('Error marking all notifications as read: $e');
+      return 0;
+    }
+  }
+
+  Future<int> deleteNotification(int id) async {
+    try {
+      await ensureNotificationsTable();
+      final db = await database;
+      return await db.delete(
+        'notifications',
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+    } catch (e) {
+      print('Error deleting notification: $e');
+      return 0;
+    }
+  }
+
+  Future<int> clearAllNotifications({int? userId, String? userEmail}) async {
+    try {
+      await ensureNotificationsTable();
+      final db = await database;
+      return await db.delete('notifications');
+    } catch (e) {
+      print('Error clearing notifications: $e');
+      return 0;
+    }
+  }
 }

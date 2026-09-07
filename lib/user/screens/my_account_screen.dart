@@ -21,12 +21,14 @@ class MyAccountScreen extends StatefulWidget {
 class _MyAccountScreenState extends State<MyAccountScreen> {
   Map<String, dynamic>? user;
   int totalBookings = 0;
+  int unreadNotifications = 0;
   bool isLoading = true;
 
   static const Color primaryBlue = Color(0xFF388AF6);
-  static const Color darkNavy = Color(0xFF1E3C72);
   static const Color darkText = Color(0xFF1E293B);
   static const Color subText = Color(0xFF64748B);
+  static const Color surfaceColor = Color(0xFFF8FAFC);
+  static const Color dividerColor = Color(0xFFF1F5F9);
 
   @override
   void initState() {
@@ -88,24 +90,74 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
       }
     }
 
-    // Fetch booking count
+    // Accurate booking count calculation
     int bCount = 0;
     try {
-      final uid = (userData != null && userData['id'] is int) ? userData['id'] as int : widget.userId;
-      final localBookings = await DBHelper.instance.getUserBookings(uid);
-      bCount = localBookings.length;
-      if (currentUid != null) {
-        final cloudB = await SupabaseService.instance.getUserBookings(currentUid);
-        if (cloudB.length > bCount) bCount = cloudB.length;
+      final int activeUid = (userData != null && userData['id'] is int) ? userData['id'] as int : widget.userId;
+      final String userEmailNormalized = (userData?['email'] ?? email).toString().trim().toLowerCase();
+
+      List<Map<String, dynamic>> combinedTickets = [];
+
+      final bList = await DBHelper.instance.getUserBookings(activeUid);
+      for (var b in bList) {
+        combinedTickets.add(b);
       }
-    } catch (e) {
-      print("Error fetching booking count: $e");
-    }
+
+      if (combinedTickets.isEmpty) {
+        final payments = await DBHelper.instance.getPayments();
+        for (var p in payments) {
+          final String pEmail = (p['email'] ?? '').toString().trim().toLowerCase();
+          if (pEmail == userEmailNormalized || userEmailNormalized.isEmpty || pEmail.isEmpty || activeUid == 0) {
+            combinedTickets.add({
+              'bookingId': p['id'],
+              'busId': p['busId'],
+              'seats': p['seats'],
+              'travelDate': p['date'],
+            });
+          }
+        }
+      }
+
+      if (combinedTickets.isEmpty && currentUid != null) {
+        final cloudB = await SupabaseService.instance.getUserBookings(currentUid);
+        for (var cb in cloudB) {
+          combinedTickets.add(cb);
+        }
+      }
+
+      // Deduplication
+      final Set<String> seenKeys = {};
+      final List<Map<String, dynamic>> deduped = [];
+
+      for (var ticket in combinedTickets) {
+        final String bId = (ticket['bookingId'] ?? ticket['id'] ?? '').toString();
+        final String seatNum = (ticket['seatNumber'] ?? ticket['seats'])?.toString().replaceAll('#', '').trim() ?? '';
+        final String date = (ticket['travelDate'] ?? ticket['date'] ?? ticket['bookingDate'])?.toString().split(' ')[0].split('T')[0] ?? '';
+
+        final String seatKey = "seat-$seatNum-$date";
+        final String idKey = "ref-$bId";
+
+        if (!seenKeys.contains(seatKey) && !seenKeys.contains(idKey)) {
+          seenKeys.add(seatKey);
+          seenKeys.add(idKey);
+          deduped.add(ticket);
+        }
+      }
+
+      bCount = deduped.length;
+    } catch (_) {}
+
+    // Unread notifications count
+    int notifCount = 0;
+    try {
+      notifCount = await DBHelper.instance.getUnreadNotificationsCount();
+    } catch (_) {}
 
     if (mounted) {
       setState(() {
         user = userData;
         totalBookings = bCount;
+        unreadNotifications = notifCount;
         isLoading = false;
       });
     }
@@ -120,15 +172,15 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(24),
-            topRight: Radius.circular(24),
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
           ),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 40,
+              width: 36,
               height: 4,
               decoration: BoxDecoration(
                 color: const Color(0xFFE2E8F0),
@@ -136,24 +188,15 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
               ),
             ),
             const SizedBox(height: 18),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFEF2F2),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 28),
-            ),
-            const SizedBox(height: 14),
             const Text(
-              "Log Out of BusVerse?",
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: darkText),
+              "Log Out",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: darkText),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             const Text(
-              "You will need to enter your email and password to access your bookings again.",
+              "Are you sure you want to log out of BusVerse?",
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12.5, color: subText),
+              style: TextStyle(fontSize: 13.5, color: subText),
             ),
             const SizedBox(height: 22),
             Row(
@@ -162,11 +205,11 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
                   child: OutlinedButton(
                     onPressed: () => Navigator.pop(ctx),
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: const EdgeInsets.symmetric(vertical: 13),
                       side: const BorderSide(color: Color(0xFFE2E8F0)),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text("Cancel", style: TextStyle(color: darkText, fontWeight: FontWeight.w700)),
+                    child: const Text("Cancel", style: TextStyle(color: darkText, fontWeight: FontWeight.w600)),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -180,13 +223,12 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      backgroundColor: const Color(0xFFEF4444),
                       elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 13),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text("Yes, Log Out", style: TextStyle(fontWeight: FontWeight.w700)),
+                    child: const Text("Log Out", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
                   ),
                 ),
               ],
@@ -202,27 +244,20 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: const Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
-            SizedBox(width: 8),
-            Text("Delete Account", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          ],
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text("Delete Account", style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: darkText)),
         content: const Text(
-          "Are you sure you want to permanently delete your account?\nAll your booking records and profile data will be permanently wiped.",
-          style: TextStyle(fontSize: 13, color: subText),
+          "Are you sure you want to permanently delete your account? All booking records and data will be erased.",
+          style: TextStyle(fontSize: 13, color: subText, height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cancel", style: TextStyle(color: subText, fontWeight: FontWeight.w700)),
+            child: const Text("Cancel", style: TextStyle(color: subText, fontWeight: FontWeight.w600)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
-              foregroundColor: Colors.white,
+              backgroundColor: const Color(0xFFEF4444),
               elevation: 0,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
@@ -235,15 +270,9 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
               await AuthService.instance.signOut();
               if (mounted) {
                 Navigator.pushNamedAndRemoveUntil(context, '/login', (r) => false);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text("Account deleted successfully."),
-                    backgroundColor: Colors.redAccent,
-                  ),
-                );
               }
             },
-            child: const Text("Delete Permanently"),
+            child: const Text("Delete", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -259,14 +288,20 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
         : "Valued Customer";
     final String email = (user?['email'] != null && user!['email'].toString().isNotEmpty)
         ? user!['email']
-        : (widget.userEmail.isNotEmpty ? widget.userEmail : "user@busverse.com");
-    final String phone = user?['phone'] ?? "Not Provided";
-    final String cnic = user?['cnic'] ?? "Not Provided";
-    final String gender = user?['gender'] ?? "M";
-    final String city = user?['city'] ?? "Lahore, Pakistan";
+        : (widget.userEmail.isNotEmpty ? widget.userEmail : "passenger@busverse.com");
+    final String phone = (user?['phone'] != null && user!['phone'].toString().isNotEmpty)
+        ? user!['phone']
+        : "Not Provided";
+    final String cnic = (user?['cnic'] != null && user!['cnic'].toString().isNotEmpty)
+        ? user!['cnic']
+        : "Not Provided";
+    final String gender = user?['gender'] == "F" ? "Female" : "Male";
+    final String city = (user?['city'] != null && user!['city'].toString().isNotEmpty)
+        ? user!['city']
+        : "Not Provided";
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: surfaceColor,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0.5,
@@ -276,19 +311,13 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          "My Profile & Account",
+          "My Profile",
           style: TextStyle(
             color: darkText,
-            fontSize: 18,
+            fontSize: 17,
             fontWeight: FontWeight.w700,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: primaryBlue, size: 22),
-            onPressed: fetchUser,
-          ),
-        ],
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator(color: primaryBlue))
@@ -300,143 +329,83 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
                 child: Column(
                   children: [
-                    // ─── PROFILE HEADER CARD (GRADIENT) ───
+                    // ─── 1. PROFILE HEADER CARD ───
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [darkNavy, primaryBlue],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(22),
-                        boxShadow: [
-                          BoxShadow(
-                            color: primaryBlue.withOpacity(0.3),
-                            blurRadius: 14,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
                       ),
                       child: Column(
                         children: [
-                          Row(
-                            children: [
-                              // Avatar with Initial
-                              Container(
-                                width: 68,
-                                height: 68,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 2.5),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.12),
-                                      blurRadius: 8,
-                                    ),
-                                  ],
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    fullName.isNotEmpty ? fullName[0].toUpperCase() : "U",
-                                    style: const TextStyle(
-                                      fontSize: 28,
-                                      fontWeight: FontWeight.w900,
-                                      color: primaryBlue,
-                                    ),
-                                  ),
+                          // Avatar Circle
+                          Container(
+                            width: 72,
+                            height: 72,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: primaryBlue.withValues(alpha: 0.12),
+                            ),
+                            child: Center(
+                              child: Text(
+                                fullName.isNotEmpty ? fullName[0].toUpperCase() : "U",
+                                style: const TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.w800,
+                                  color: primaryBlue,
                                 ),
                               ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      fullName,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 3),
-                                    Text(
-                                      email,
-                                      style: const TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 12.5,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.2),
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: const Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(Icons.verified_rounded, color: Color(0xFF4ADE80), size: 12),
-                                          SizedBox(width: 4),
-                                          Text(
-                                            "Verified Passenger",
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
-                          const SizedBox(height: 18),
-                          const Divider(color: Colors.white24, height: 1),
+                          const SizedBox(height: 12),
+                          Text(
+                            fullName,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: darkText,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            email,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: subText,
+                            ),
+                          ),
                           const SizedBox(height: 14),
 
-                          // Edit Profile Button inside Header
-                          InkWell(
-                            borderRadius: BorderRadius.circular(12),
-                            onTap: () async {
-                              await Navigator.pushNamed(
-                                context,
-                                '/edit_basic_info',
-                                arguments: {
-                                  'userId': user?['id'] ?? widget.userId,
-                                  'userEmail': email,
-                                },
-                              );
-                              fetchUser();
-                            },
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
+                          // Edit Profile Pill Button
+                          SizedBox(
+                            height: 36,
+                            child: OutlinedButton.icon(
+                              onPressed: () async {
+                                await Navigator.pushNamed(
+                                  context,
+                                  '/edit_basic_info',
+                                  arguments: {'userId': user?['id'] ?? widget.userId, 'userEmail': email},
+                                );
+                                fetchUser();
+                              },
+                              icon: const Icon(Icons.edit_outlined, size: 14, color: primaryBlue),
+                              label: const Text(
+                                "Edit Profile",
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: primaryBlue,
+                                ),
                               ),
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.edit_rounded, size: 16, color: primaryBlue),
-                                  SizedBox(width: 6),
-                                  Text(
-                                    "Edit Profile Information",
-                                    style: TextStyle(
-                                      color: primaryBlue,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ],
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Color(0xFFBFDBFE)),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
                               ),
                             ),
                           ),
@@ -444,138 +413,191 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 16),
-
-                    // ─── QUICK STATS SUMMARY ROW ───
-                    Row(
-                      children: [
-                        _buildStatBox("Bookings", "$totalBookings Trips", Icons.confirmation_number_rounded, const Color(0xFF388AF6)),
-                        const SizedBox(width: 10),
-                        _buildStatBox("Wallet Balance", "8,500 PKR", Icons.account_balance_wallet_rounded, const Color(0xFF16A34A)),
-                        const SizedBox(width: 10),
-                        _buildStatBox("Tier", "Gold VIP", Icons.stars_rounded, const Color(0xFFD97706)),
-                      ],
-                    ),
-
-                    const SizedBox(height: 18),
-
-                    // ─── PERSONAL DETAILS CARD ───
-                    _buildSectionContainer(
-                      title: "Personal Information",
-                      icon: Icons.badge_outlined,
-                      children: [
-                        _buildDetailItem(Icons.phone_outlined, "Phone Number", phone),
-                        _buildDetailItem(Icons.credit_card_outlined, "CNIC Number", cnic),
-                        _buildDetailItem(Icons.person_outline_rounded, "Gender", gender == "F" ? "Female" : "Male"),
-                        _buildDetailItem(Icons.location_city_outlined, "City / Region", city, isLast: true),
-                      ],
-                    ),
-
                     const SizedBox(height: 14),
 
-                    // ─── QUICK SERVICES MENU ───
-                    _buildSectionContainer(
-                      title: "My Activity & Shortcuts",
-                      icon: Icons.dashboard_outlined,
+                    // ─── 2. TWO-CARD SUMMARY STATS ───
+                    Row(
                       children: [
-                        _buildMenuTile(
-                          icon: Icons.confirmation_number_outlined,
-                          title: "My Bookings & Tickets",
-                          subtitle: "View active and past trip e-tickets",
-                          onTap: () {
-                            Navigator.pushNamed(
+                        Expanded(
+                          child: _buildSummaryBox(
+                            title: "Booked Trips",
+                            value: "$totalBookings",
+                            icon: Icons.confirmation_number_outlined,
+                            iconColor: primaryBlue,
+                            onTap: () async {
+                              await Navigator.pushNamed(
+                                context,
+                                '/my_tickets',
+                                arguments: {'userId': user?['id'] ?? widget.userId, 'userEmail': email},
+                              );
+                              fetchUser();
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildSummaryBox(
+                            title: "Wallet",
+                            value: "Active",
+                            icon: Icons.account_balance_wallet_outlined,
+                            iconColor: const Color(0xFF16A34A),
+                            onTap: () => Navigator.pushNamed(context, '/my_wallet'),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // ─── 3. PERSONAL DETAILS SECTION ───
+                    _buildSectionContainer(
+                      title: "PERSONAL DETAILS",
+                      children: [
+                        _buildInfoTile(Icons.phone_outlined, "Phone", phone),
+                        const Divider(height: 1, color: dividerColor),
+                        _buildInfoTile(Icons.badge_outlined, "CNIC", cnic),
+                        const Divider(height: 1, color: dividerColor),
+                        _buildInfoTile(Icons.wc_outlined, "Gender", gender),
+                        const Divider(height: 1, color: dividerColor),
+                        _buildInfoTile(Icons.location_on_outlined, "City", city),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // ─── 4. SERVICES & ACTIVITY ───
+                    _buildSectionContainer(
+                      title: "SERVICES & ACTIVITY",
+                      children: [
+                        _buildNavTile(
+                          icon: Icons.airplane_ticket_outlined,
+                          title: "My Tickets",
+                          subtitle: "View and manage active tickets",
+                          onTap: () async {
+                            await Navigator.pushNamed(
                               context,
                               '/my_tickets',
                               arguments: {'userId': user?['id'] ?? widget.userId, 'userEmail': email},
                             );
+                            fetchUser();
                           },
                         ),
-                        _buildMenuTile(
-                          icon: Icons.account_balance_wallet_outlined,
-                          title: "BusVerse Wallet",
-                          subtitle: "Manage funds, top up & instant refunds",
-                          onTap: () => Navigator.pushNamed(context, '/my_wallet'),
+                        const Divider(height: 1, color: dividerColor),
+                        _buildNavTile(
+                          icon: Icons.notifications_none_rounded,
+                          title: "Notifications",
+                          subtitle: "Trip alerts & promotional offers",
+                          badgeCount: unreadNotifications,
+                          onTap: () async {
+                            await Navigator.pushNamed(
+                              context,
+                              '/notifications',
+                              arguments: {'userId': user?['id'] ?? widget.userId, 'userEmail': email},
+                            );
+                            fetchUser();
+                          },
                         ),
-                        _buildMenuTile(
+                        const Divider(height: 1, color: dividerColor),
+                        _buildNavTile(
                           icon: Icons.local_shipping_outlined,
                           title: "Cargo Tracking",
                           subtitle: "Track live courier & parcel delivery",
                           onTap: () => Navigator.pushNamed(context, '/cargo_tracking'),
                         ),
-                        _buildMenuTile(
-                          icon: Icons.headset_mic_outlined,
-                          title: "24/7 Support & Help Desk",
-                          subtitle: "Live assistance & ticket inquiries",
-                          onTap: () {
-                            Navigator.pushNamed(
-                              context,
-                              '/support',
-                              arguments: {'userId': user?['id'] ?? widget.userId},
-                            );
-                          },
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // ─── 5. HELP & SECURITY ───
+                    _buildSectionContainer(
+                      title: "SUPPORT & SECURITY",
+                      children: [
+                        _buildNavTile(
+                          icon: Icons.support_agent_rounded,
+                          title: "Help & Support",
+                          subtitle: "24/7 customer helpline assistance",
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            '/support',
+                            arguments: {'userId': user?['id'] ?? widget.userId},
+                          ),
                         ),
-                        _buildMenuTile(
-                          icon: Icons.feedback_outlined,
-                          title: "Submit Feedback or Complaint",
-                          subtitle: "Share your travel experience with us",
-                          isLast: true,
-                          onTap: () {
-                            Navigator.pushNamed(
+                        const Divider(height: 1, color: dividerColor),
+                        _buildNavTile(
+                          icon: Icons.rate_review_outlined,
+                          title: "Feedback & Complaints",
+                          subtitle: "Submit a review or report an issue",
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            '/feedback',
+                            arguments: {'userId': user?['id'] ?? widget.userId},
+                          ),
+                        ),
+                        const Divider(height: 1, color: dividerColor),
+                        _buildNavTile(
+                          icon: Icons.lock_outline_rounded,
+                          title: "Change Password",
+                          subtitle: "Update account security credentials",
+                          onTap: () async {
+                            await Navigator.pushNamed(
                               context,
-                              '/feedback',
-                              arguments: {'userId': user?['id'] ?? widget.userId},
+                              '/edit_basic_info',
+                              arguments: {'userId': user?['id'] ?? widget.userId, 'userEmail': email},
                             );
+                            fetchUser();
                           },
                         ),
                       ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // ─── 6. LOG OUT & DELETE ───
+                    Material(
+                      color: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: const BorderSide(color: Color(0xFFE2E8F0)),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: ListTile(
+                        leading: const Icon(Icons.logout_rounded, color: Color(0xFFEF4444), size: 20),
+                        title: const Text(
+                          "Log Out",
+                          style: TextStyle(
+                            color: Color(0xFFEF4444),
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        trailing: const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFFCBD5E1), size: 14),
+                        onTap: _confirmLogout,
+                      ),
                     ),
 
                     const SizedBox(height: 14),
 
-                    // ─── ACCOUNT ACTIONS & LOGOUT ───
-                    _buildSectionContainer(
-                      title: "Account Security & Actions",
-                      icon: Icons.shield_outlined,
-                      children: [
-                        _buildMenuTile(
-                          icon: Icons.lock_outline_rounded,
-                          title: "Change Password",
-                          subtitle: "Update account login credentials",
-                          onTap: () {
-                            Navigator.pushNamed(
-                              context,
-                              '/edit_basic_info',
-                              arguments: {
-                                'userId': user?['id'] ?? widget.userId,
-                                'userEmail': email,
-                              },
-                            );
-                          },
+                    TextButton(
+                      onPressed: _confirmDeleteAccount,
+                      child: const Text(
+                        "Delete Account",
+                        style: TextStyle(
+                          color: Color(0xFF94A3B8),
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
                         ),
-                        _buildMenuTile(
-                          icon: Icons.logout_rounded,
-                          title: "Log Out",
-                          subtitle: "Sign out of your BusVerse account",
-                          iconColor: const Color(0xFFE11D48),
-                          onTap: _confirmLogout,
-                        ),
-                        _buildMenuTile(
-                          icon: Icons.delete_forever_rounded,
-                          title: "Delete Account",
-                          subtitle: "Permanently erase your account and history",
-                          iconColor: Colors.redAccent,
-                          isLast: true,
-                          onTap: _confirmDeleteAccount,
-                        ),
-                      ],
+                      ),
                     ),
 
-                    const SizedBox(height: 24),
-
-                    // Footer Version Label
+                    const SizedBox(height: 6),
                     const Text(
-                      "BusVerse Application v2.4.0 • Junaid Movers",
-                      style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontWeight: FontWeight.w600),
+                      "BusVerse • Junaid Movers",
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFFCBD5E1),
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                     const SizedBox(height: 20),
                   ],
@@ -585,158 +607,155 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
     );
   }
 
-  Widget _buildStatBox(String label, String value, IconData icon, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.02),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, size: 16, color: color),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: darkText),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: const TextStyle(fontSize: 10, color: subText, fontWeight: FontWeight.w600),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSectionContainer({
+  // ─── SUMMARY BOX ───
+  Widget _buildSummaryBox({
     required String title,
+    required String value,
     required IconData icon,
-    required List<Widget> children,
+    required Color iconColor,
+    VoidCallback? onTap,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
+    return Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: const BorderSide(color: Color(0xFFE2E8F0)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-            child: Row(
-              children: [
-                Icon(icon, size: 16, color: primaryBlue),
-                const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w800,
-                    color: darkText,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1, color: Color(0xFFF1F5F9)),
-          ...children,
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailItem(IconData icon, String label, String value, {bool isLast = false}) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
           child: Row(
             children: [
-              Icon(icon, size: 18, color: subText),
-              const SizedBox(width: 12),
-              Text(
-                label,
-                style: const TextStyle(fontSize: 12.5, color: subText, fontWeight: FontWeight.w500),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: iconColor, size: 18),
               ),
-              const Spacer(),
-              Text(
-                value,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: darkText),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: subText),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: darkText),
+                  ),
+                ],
               ),
             ],
           ),
         ),
-        if (!isLast) const Divider(height: 1, indent: 16, endIndent: 16, color: Color(0xFFF8FAFC)),
+      ),
+    );
+  }
+
+  // ─── SECTION CONTAINER ───
+  Widget _buildSectionContainer({
+    required String title,
+    required List<Widget> children,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+              color: subText,
+              letterSpacing: 0.6,
+            ),
+          ),
+        ),
+        Material(
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(children: children),
+        ),
       ],
     );
   }
 
-  Widget _buildMenuTile({
+  // ─── INFO TILE (Read-only Personal Info) ───
+  Widget _buildInfoTile(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: subText),
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 13.5, color: subText, fontWeight: FontWeight.w500),
+          ),
+          const Spacer(),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: darkText),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── NAVIGATION TILE ───
+  Widget _buildNavTile({
     required IconData icon,
     required String title,
     required String subtitle,
     required VoidCallback onTap,
-    Color? iconColor,
-    bool isLast = false,
+    int badgeCount = 0,
   }) {
-    return Column(
-      children: [
-        ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-          leading: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: (iconColor ?? primaryBlue).withOpacity(0.09),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, size: 18, color: iconColor ?? primaryBlue),
-          ),
-          title: Text(
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      leading: Icon(icon, color: primaryBlue, size: 20),
+      title: Row(
+        children: [
+          Text(
             title,
-            style: TextStyle(
-              fontSize: 13.5,
+            style: const TextStyle(
+              fontSize: 14,
               fontWeight: FontWeight.w700,
-              color: iconColor ?? darkText,
+              color: darkText,
             ),
           ),
-          subtitle: Text(
-            subtitle,
-            style: const TextStyle(fontSize: 11, color: subText),
-          ),
-          trailing: const Icon(Icons.chevron_right_rounded, size: 20, color: Color(0xFFCBD5E1)),
-          onTap: onTap,
-        ),
-        if (!isLast) const Divider(height: 1, indent: 16, endIndent: 16, color: Color(0xFFF1F5F9)),
-      ],
+          if (badgeCount > 0) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEF4444),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                "$badgeCount",
+                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ],
+      ),
+      subtitle: Text(
+        subtitle,
+        style: const TextStyle(fontSize: 12, color: subText),
+      ),
+      trailing: const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFFCBD5E1), size: 13),
+      onTap: onTap,
     );
   }
 }

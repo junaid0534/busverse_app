@@ -18,6 +18,8 @@ import 'package:bus_ticket_system/user/screens/passenger_detail_screen.dart';
 import 'package:bus_ticket_system/user/screens/payment_screen.dart';
 import 'package:bus_ticket_system/user/screens/view_ticket_screen.dart';
 import 'package:bus_ticket_system/user/screens/my_tickets_screen.dart';
+import 'package:bus_ticket_system/user/screens/notifications_screen.dart';
+import 'package:bus_ticket_system/user/screens/no_bus_found_screen.dart';
 import 'package:bus_ticket_system/user/screens/cargo_tracking_screen.dart';
 import 'package:bus_ticket_system/user/screens/support_screen.dart';
 import 'package:bus_ticket_system/user/screens/complain_screen.dart';
@@ -123,6 +125,16 @@ class MyApp extends StatelessWidget {
             userId: args['userId'],
           );
         },
+        '/no_bus_found': (context) {
+          final args = ModalRoute.of(context)!.settings.arguments as Map;
+          return NoBusFoundScreen(
+            fromCity: args['fromCity'],
+            toCity: args['toCity'],
+            selectedDate: args['selectedDate'],
+            busClass: args['busClass'] ?? 'All Types',
+            userId: args['userId'] ?? 1,
+          );
+        },
         '/book_seat': (context) {
           final args = ModalRoute.of(context)!.settings.arguments as Map;
           return BookSeatScreen(
@@ -159,6 +171,13 @@ class MyApp extends StatelessWidget {
           return MyTicketsScreen(
             userId: args['userId'],
             userEmail: args['userEmail'],
+          );
+        },
+        '/notifications': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>? ?? {};
+          return NotificationsScreen(
+            userId: args['userId'] ?? 1,
+            userEmail: args['userEmail'] ?? '',
           );
         },
 
