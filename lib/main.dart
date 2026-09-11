@@ -46,6 +46,11 @@ import 'package:bus_ticket_system/admin/screens/bookings/view_all_booking_screen
 // NEW ADMIN SCREENS
 import 'package:bus_ticket_system/admin/screens/admin_feedback_screen.dart';
 import 'package:bus_ticket_system/admin/screens/admin_complains_screen.dart';
+import 'package:bus_ticket_system/admin/screens/sub_admins/manage_sub_admins_screen.dart';
+import 'package:bus_ticket_system/admin/screens/sub_admins/add_edit_sub_admin_screen.dart';
+import 'package:bus_ticket_system/sub_admin/screens/sub_admin_dashboard_screen.dart';
+import 'package:bus_ticket_system/sub_admin/screens/counter_ticket_booking_screen.dart';
+import 'package:bus_ticket_system/sub_admin/screens/counter_search_bus_screen.dart';
 
 // BACKEND CONFIG & SERVICES
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -236,6 +241,23 @@ class MyApp extends StatelessWidget {
         // NEW ADMIN ROUTES
         '/admin_feedbacks': (context) => const AdminFeedbackScreen(),
         '/admin_complains': (context) => const AdminComplainsScreen(),
+        '/manage_sub_admins': (context) => const ManageSubAdminsScreen(),
+        '/add_edit_sub_admin': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+          return AddEditSubAdminScreen(existing: args);
+        },
+        '/sub_admin_dashboard': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+          return SubAdminDashboardScreen(userProfile: args);
+        },
+        '/counter_ticket_booking': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+          return CounterTicketBookingScreen(userProfile: args);
+        },
+        '/counter_search_bus': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+          return CounterSearchBusScreen(userProfile: args);
+        },
       },
       onUnknownRoute: (settings) {
         return MaterialPageRoute(

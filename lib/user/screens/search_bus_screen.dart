@@ -231,29 +231,29 @@ class _SearchBusScreenState extends State<SearchBusScreen> {
         elevation: 0.5,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: darkText, size: 20),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: darkText, size: 19),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           "Search Bus",
           style: TextStyle(
             color: darkText,
-            fontWeight: FontWeight.w700,
-            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
           ),
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ─── ROUTE SELECTION (INPUT WITH AUTOCOMPLETE) ───
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: const Color(0xFFE2E8F0)),
                 boxShadow: [
                   BoxShadow(
@@ -278,7 +278,7 @@ class _SearchBusScreenState extends State<SearchBusScreen> {
 
                       const Padding(
                         padding: EdgeInsets.symmetric(horizontal: 36),
-                        child: Divider(color: Color(0xFFF1F5F9), height: 24, thickness: 1),
+                        child: Divider(color: Color(0xFFF1F5F9), height: 20, thickness: 1),
                       ),
 
                       // To City Autocomplete Input
@@ -295,11 +295,11 @@ class _SearchBusScreenState extends State<SearchBusScreen> {
                   // Swap Button
                   Positioned(
                     right: 8,
-                    top: 38,
+                    top: 36,
                     child: GestureDetector(
                       onTap: _swapCities,
                       child: Container(
-                        padding: const EdgeInsets.all(8),
+                        padding: const EdgeInsets.all(7),
                         decoration: BoxDecoration(
                           color: const Color(0xFFF0F7FF),
                           shape: BoxShape.circle,
@@ -308,7 +308,7 @@ class _SearchBusScreenState extends State<SearchBusScreen> {
                         child: const Icon(
                           Icons.swap_vert_rounded,
                           color: primaryBlue,
-                          size: 20,
+                          size: 18,
                         ),
                       ),
                     ),
@@ -317,16 +317,16 @@ class _SearchBusScreenState extends State<SearchBusScreen> {
               ),
             ),
 
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
 
             // ─── DATE SELECTION CARD ───
             GestureDetector(
               onTap: pickDate,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: const Color(0xFFE2E8F0)),
                   boxShadow: [
                     BoxShadow(
@@ -339,14 +339,14 @@ class _SearchBusScreenState extends State<SearchBusScreen> {
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: const Color(0xFFF0F7FF),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(Icons.calendar_month_rounded, color: primaryBlue, size: 20),
+                      child: const Icon(Icons.calendar_month_rounded, color: primaryBlue, size: 18),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -355,7 +355,7 @@ class _SearchBusScreenState extends State<SearchBusScreen> {
                             "Travel Date",
                             style: TextStyle(
                               fontSize: 11,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w500,
                               color: subText,
                             ),
                           ),
@@ -363,28 +363,28 @@ class _SearchBusScreenState extends State<SearchBusScreen> {
                           Text(
                             dateController.text.isEmpty ? "Select Date" : dateController.text,
                             style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w600,
                               color: darkText,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const Icon(Icons.keyboard_arrow_down_rounded, color: subText, size: 22),
+                    const Icon(Icons.keyboard_arrow_down_rounded, color: subText, size: 20),
                   ],
                 ),
               ),
             ),
 
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
 
             // ─── BUS TYPE FILTER ───
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: const Color(0xFFE2E8F0)),
                 boxShadow: [
                   BoxShadow(
@@ -401,7 +401,7 @@ class _SearchBusScreenState extends State<SearchBusScreen> {
                     "Bus Type",
                     style: TextStyle(
                       fontSize: 11,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
                       color: subText,
                     ),
                   ),
@@ -414,10 +414,10 @@ class _SearchBusScreenState extends State<SearchBusScreen> {
                       return GestureDetector(
                         onTap: () => setState(() => selectedBusType = type),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
                             color: isSelected ? primaryBlue : const Color(0xFFF8FAFC),
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(18),
                             border: Border.all(
                               color: isSelected ? primaryBlue : const Color(0xFFE2E8F0),
                             ),
@@ -425,8 +425,8 @@ class _SearchBusScreenState extends State<SearchBusScreen> {
                           child: Text(
                             type,
                             style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
+                              fontSize: 11.5,
+                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                               color: isSelected ? Colors.white : subText,
                             ),
                           ),
@@ -438,12 +438,12 @@ class _SearchBusScreenState extends State<SearchBusScreen> {
               ),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             // ─── SEARCH BUTTON ───
             SizedBox(
               width: double.infinity,
-              height: 48,
+              height: 46,
               child: ElevatedButton(
                 onPressed: () => searchBus(currentUserId),
                 style: ElevatedButton.styleFrom(
@@ -451,19 +451,19 @@ class _SearchBusScreenState extends State<SearchBusScreen> {
                   foregroundColor: Colors.white,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                 ),
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.search_rounded, size: 20),
+                    Icon(Icons.search_rounded, size: 18),
                     SizedBox(width: 8),
                     Text(
                       "Search Buses",
                       style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],

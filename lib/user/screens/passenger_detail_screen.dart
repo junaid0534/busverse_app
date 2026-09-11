@@ -53,20 +53,20 @@ class _PassengerDetailScreenState extends State<PassengerDetailScreen> {
         elevation: 0.5,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: darkText, size: 20),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: darkText, size: 19),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           "Passenger Details",
           style: TextStyle(
             color: darkText,
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Form(
           key: _formKey,
           child: Column(
@@ -74,7 +74,7 @@ class _PassengerDetailScreenState extends State<PassengerDetailScreen> {
             children: [
               // ─── TRIP SUMMARY CARD ───
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [
@@ -84,12 +84,12 @@ class _PassengerDetailScreenState extends State<PassengerDetailScreen> {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(14),
                   boxShadow: [
                     BoxShadow(
-                      color: primaryBlue.withOpacity(0.28),
-                      blurRadius: 12,
-                      offset: const Offset(0, 5),
+                      color: primaryBlue.withOpacity(0.25),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
@@ -102,37 +102,37 @@ class _PassengerDetailScreenState extends State<PassengerDetailScreen> {
                           widget.bus.fromCity,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                        const Icon(Icons.arrow_forward_rounded, color: Colors.white70, size: 18),
+                        const Icon(Icons.arrow_forward_rounded, color: Colors.white70, size: 16),
                         Text(
                           widget.bus.toCity,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     const Divider(color: Colors.white24, height: 1),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.event_seat_rounded, color: Colors.white70, size: 15),
+                            const Icon(Icons.event_seat_rounded, color: Colors.white70, size: 14),
                             const SizedBox(width: 5),
                             Text(
                               "Seats: ${widget.selectedSeats.map((s) => '#$s').join(', ')}",
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ],
@@ -141,8 +141,8 @@ class _PassengerDetailScreenState extends State<PassengerDetailScreen> {
                           "PKR ${totalFare.toStringAsFixed(0)}",
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ],
@@ -151,14 +151,14 @@ class _PassengerDetailScreenState extends State<PassengerDetailScreen> {
                 ),
               ),
 
-              const SizedBox(height: 18),
+              const SizedBox(height: 14),
 
               // ─── PASSENGER INFORMATION FORM ───
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: const Color(0xFFE2E8F0)),
                   boxShadow: [
                     BoxShadow(
@@ -174,17 +174,17 @@ class _PassengerDetailScreenState extends State<PassengerDetailScreen> {
                     const Text(
                       "Contact Information",
                       style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
                         color: darkText,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 3),
                     const Text(
                       "Ticket confirmation & invoice will be sent to these details",
                       style: TextStyle(fontSize: 11, color: subText),
                     ),
-                    const Divider(color: Color(0xFFF1F5F9), height: 20),
+                    const Divider(color: Color(0xFFF1F5F9), height: 16),
 
                     // Full Name
                     _buildField(
@@ -195,7 +195,7 @@ class _PassengerDetailScreenState extends State<PassengerDetailScreen> {
                       validator: (val) => val == null || val.trim().isEmpty ? "Please enter full name" : null,
                     ),
 
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 12),
 
                     // CNIC Number
                     _buildField(
@@ -207,7 +207,7 @@ class _PassengerDetailScreenState extends State<PassengerDetailScreen> {
                       validator: (val) => val == null || val.trim().isEmpty ? "Please enter CNIC" : null,
                     ),
 
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 12),
 
                     // Phone Number
                     _buildField(
@@ -219,7 +219,7 @@ class _PassengerDetailScreenState extends State<PassengerDetailScreen> {
                       validator: (val) => val == null || val.trim().isEmpty ? "Please enter phone number" : null,
                     ),
 
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 12),
 
                     // Email Address
                     _buildField(
@@ -233,19 +233,19 @@ class _PassengerDetailScreenState extends State<PassengerDetailScreen> {
                 ),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
               // ─── PROCEED BUTTON ───
               SizedBox(
                 width: double.infinity,
-                height: 48,
+                height: 46,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryBlue,
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                   ),
                   onPressed: () {
@@ -279,10 +279,10 @@ class _PassengerDetailScreenState extends State<PassengerDetailScreen> {
                     children: [
                       Text(
                         "Proceed to Payment",
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                        style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
                       ),
                       SizedBox(width: 8),
-                      Icon(Icons.arrow_forward_rounded, size: 18),
+                      Icon(Icons.arrow_forward_rounded, size: 16),
                     ],
                   ),
                 ),
@@ -309,21 +309,21 @@ class _PassengerDetailScreenState extends State<PassengerDetailScreen> {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: darkText),
+          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w500, color: darkText),
         ),
-        const SizedBox(height: 5),
+        const SizedBox(height: 4),
         TextFormField(
           controller: controller,
           keyboardType: keyboardType,
-          style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: darkText),
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: darkText),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8), fontWeight: FontWeight.w400),
-            prefixIcon: Icon(icon, size: 18, color: primaryBlue),
+            hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8), fontWeight: FontWeight.w400),
+            prefixIcon: Icon(icon, size: 17, color: primaryBlue),
             filled: true,
             fillColor: const Color(0xFFF8FAFC),
             isDense: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: const BorderSide(color: Color(0xFFE2E8F0)),

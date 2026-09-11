@@ -337,7 +337,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // ─── Login Handler (same logic, extracted) ───
+  // ─── Login Handler (Role-Based Auto-Routing) ───
   Future<void> _handleLogin() async {
     String email = emailController.text.trim();
     String pass = passwordController.text.trim();
@@ -352,7 +352,64 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // 1. Firebase Auth Sign-In
+      // 1. Check Super Admin Master Credentials
+      if (email.toLowerCase() == "admin@junaid.com" && pass == "admin123") {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Welcome Super Admin!"),
+            backgroundColor: Color(0xFF388AF6),
+          ),
+        );
+        Navigator.pushReplacementNamed(context, '/admin_dashboard');
+        return;
+      }
+
+      // 2. Check Sub-Admin / Local Database Role Account
+      final localUser = await DBHelper.instance.loginUser(email, pass);
+      if (localUser != null) {
+        final role = (localUser['role'] ?? 'user').toString().toLowerCase();
+        final status = (localUser['status'] ?? 'active').toString().toLowerCase();
+
+        if (role == 'sub_admin') {
+          if (status == 'suspended') {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Your Terminal Agent account is currently suspended. Please contact Super Admin."),
+                backgroundColor: Colors.orange,
+              ),
+            );
+            return;
+          }
+
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Welcome ${localUser['firstName']} (Terminal Agent)!"),
+              backgroundColor: const Color(0xFF10B981),
+            ),
+          );
+          Navigator.pushReplacementNamed(
+            context,
+            '/sub_admin_dashboard',
+            arguments: localUser,
+          );
+          return;
+        } else if (role == 'super_admin') {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Welcome Super Admin!"),
+              backgroundColor: Color(0xFF388AF6),
+            ),
+          );
+          Navigator.pushReplacementNamed(context, '/admin_dashboard');
+          return;
+        }
+      }
+
+      // 3. Regular Passenger Firebase Auth Sign-In
       final credential = await AuthService.instance.signIn(
         email: email,
         password: pass,
@@ -362,7 +419,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (user != null && !user.emailVerified) {
         if (!mounted) return;
-        // Show email not verified dialog
         await showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
@@ -389,6 +445,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   await AuthService.instance.resendVerificationEmail(email);
                   if (ctx.mounted) {
                     Navigator.pop(ctx);
+                  }
+                  if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text("Verification link resent! Check inbox / spam."),
@@ -426,22 +484,33 @@ class _LoginScreenState extends State<LoginScreen> {
         arguments: {'userEmail': email},
       );
     } catch (e) {
-      // Fallback to SQLite check if offline or local account
+      // 4. Fallback to SQLite check for local passenger account
       var localUser = await DBHelper.instance.loginUser(email, pass);
       if (!mounted) return;
 
       if (localUser != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Login Successful! (Offline)"),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.pushReplacementNamed(
-          context,
-          "/welcome_login",
-          arguments: {'userEmail': localUser['email']},
-        );
+        final role = (localUser['role'] ?? 'user').toString().toLowerCase();
+        if (role == 'sub_admin') {
+          Navigator.pushReplacementNamed(
+            context,
+            '/sub_admin_dashboard',
+            arguments: localUser,
+          );
+        } else if (role == 'super_admin') {
+          Navigator.pushReplacementNamed(context, '/admin_dashboard');
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Login Successful! (Offline)"),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.pushReplacementNamed(
+            context,
+            "/welcome_login",
+            arguments: {'userEmail': localUser['email']},
+          );
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

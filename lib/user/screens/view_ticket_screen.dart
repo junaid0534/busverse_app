@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 import 'package:bus_ticket_system/admin/models/bus_model.dart';
 
 class ViewTicketScreen extends StatefulWidget {
@@ -105,6 +106,17 @@ class _ViewTicketScreenState extends State<ViewTicketScreen> {
         ? passenger["phone"].toString().trim()
         : (p["passengerPhone"]?.toString().trim().isNotEmpty == true ? p["passengerPhone"] : "N/A");
 
+    final String rawBookingTime = (p["bookingTimestamp"] ?? p["createdAt"] ?? "").toString().trim();
+    String bookingTimeFormatted = "";
+    if (rawBookingTime.isNotEmpty) {
+      try {
+        final dt = DateTime.parse(rawBookingTime);
+        bookingTimeFormatted = DateFormat('dd MMM yyyy, hh:mm a').format(dt.toLocal());
+      } catch (_) {
+        bookingTimeFormatted = rawBookingTime;
+      }
+    }
+
     final String bookingRef = "BV-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}";
 
     return Scaffold(
@@ -117,12 +129,12 @@ class _ViewTicketScreenState extends State<ViewTicketScreen> {
           "E-Ticket Confirmation",
           style: TextStyle(
             color: darkText,
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
           ),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: darkText, size: 20),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: darkText, size: 18),
           onPressed: () {
             if (Navigator.canPop(context)) {
               Navigator.pop(context);
@@ -146,7 +158,7 @@ class _ViewTicketScreenState extends State<ViewTicketScreen> {
                   border: Border.all(color: const Color(0xFFE2E8F0)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
+                      color: Colors.black.withValues(alpha: 0.04),
                       blurRadius: 14,
                       offset: const Offset(0, 6),
                     ),
@@ -181,16 +193,16 @@ class _ViewTicketScreenState extends State<ViewTicketScreen> {
                                       text: "Bus",
                                       style: TextStyle(
                                         color: Colors.white,
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w900,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w700,
                                       ),
                                     ),
                                     TextSpan(
                                       text: "Verse",
                                       style: TextStyle(
                                         color: Color(0xFF60A5FA),
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w900,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w700,
                                       ),
                                     ),
                                   ],
@@ -206,7 +218,7 @@ class _ViewTicketScreenState extends State<ViewTicketScreen> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
+                              color: Colors.white.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: const Row(
@@ -215,7 +227,7 @@ class _ViewTicketScreenState extends State<ViewTicketScreen> {
                                 SizedBox(width: 4),
                                 Text(
                                   "CONFIRMED",
-                                  style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800),
+                                  style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
                                 ),
                               ],
                             ),
@@ -237,13 +249,13 @@ class _ViewTicketScreenState extends State<ViewTicketScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text("FROM", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: subText)),
+                                    const Text("FROM", style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w500, color: subText)),
                                     const SizedBox(height: 2),
                                     Text(
                                       fromCity,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: darkText),
+                                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: darkText),
                                     ),
                                   ],
                                 ),
@@ -252,8 +264,8 @@ class _ViewTicketScreenState extends State<ViewTicketScreen> {
                                 flex: 2,
                                 child: Column(
                                   children: [
-                                    Icon(Icons.directions_bus_rounded, color: primaryBlue, size: 20),
-                                    Icon(Icons.arrow_forward_rounded, color: subText, size: 16),
+                                    Icon(Icons.directions_bus_rounded, color: primaryBlue, size: 18),
+                                    Icon(Icons.arrow_forward_rounded, color: subText, size: 14),
                                   ],
                                 ),
                               ),
@@ -262,14 +274,14 @@ class _ViewTicketScreenState extends State<ViewTicketScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
-                                    const Text("TO", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: subText)),
+                                    const Text("TO", style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w500, color: subText)),
                                     const SizedBox(height: 2),
                                     Text(
                                       toCity,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       textAlign: TextAlign.end,
-                                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: darkText),
+                                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: darkText),
                                     ),
                                   ],
                                 ),
@@ -365,6 +377,7 @@ class _ViewTicketScreenState extends State<ViewTicketScreen> {
                           _ticketRow("Booked Seats", seats.map((s) => "Seat #$s").join(", ")),
                           _ticketRow("Payment Method", paymentMethod),
                           if (busNumber.isNotEmpty) _ticketRow("Bus Number", busNumber),
+                          if (bookingTimeFormatted.isNotEmpty) _ticketRow("Booked On", bookingTimeFormatted),
 
                           const SizedBox(height: 16),
 
@@ -422,7 +435,7 @@ class _ViewTicketScreenState extends State<ViewTicketScreen> {
                 onPressed: _isSaving ? null : saveAndShareTicket,
                 label: const Text(
                   "Share / Save Ticket",
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
                 ),
               ),
             ),
@@ -445,7 +458,7 @@ class _ViewTicketScreenState extends State<ViewTicketScreen> {
                 },
                 label: const Text(
                   "Back to Home",
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: primaryBlue),
+                  style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: primaryBlue),
                 ),
               ),
             ),
@@ -463,12 +476,12 @@ class _ViewTicketScreenState extends State<ViewTicketScreen> {
           ? CrossAxisAlignment.end
           : (alignment == Alignment.center ? CrossAxisAlignment.center : CrossAxisAlignment.start),
       children: [
-        Text(label, style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: subText)),
+        Text(label, style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w500, color: subText)),
         const SizedBox(height: 2),
         FittedBox(
           fit: BoxFit.scaleDown,
           alignment: alignment,
-          child: Text(value, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: darkText)),
+          child: Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: darkText)),
         ),
       ],
     );
@@ -480,13 +493,13 @@ class _ViewTicketScreenState extends State<ViewTicketScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: subText)),
+          Text(label, style: const TextStyle(fontSize: 11.5, color: subText)),
           const SizedBox(width: 8),
           Flexible(
             child: Text(
               value,
               textAlign: TextAlign.end,
-              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: darkText),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: darkText),
             ),
           ),
         ],

@@ -204,6 +204,112 @@ class SupabaseService {
   }
 
   // ============================================================
+  // TERMINAL COUNTER BOOKINGS (DEDICATED)
+  // ============================================================
+  Future<bool> createTerminalBooking({
+    required int busId,
+    required List<int> seatNumbers,
+    required Map<int, String> seatGenders,
+    required String passengerName,
+    required String passengerPhone,
+    required String passengerCnic,
+    required double totalAmount,
+    required String paymentMethod,
+    required String terminalCity,
+    required String terminalName,
+    required String agentName,
+    required String bookingDate,
+  }) async {
+    final double farePerSeat = seatNumbers.isNotEmpty ? (totalAmount / seatNumbers.length) : totalAmount;
+    final nowIso = DateTime.now().toUtc().toIso8601String();
+
+    // 1. Dedicated terminal_bookings table in Supabase
+    try {
+      // Primary: Exact camelCase columns as defined in Supabase table
+      final camelRows = seatNumbers.map((seat) {
+        return {
+          'busId': busId,
+          'seatNumber': seat,
+          'gender': seatGenders[seat] ?? 'Male',
+          'passengerName': passengerName,
+          'passengerPhone': passengerPhone,
+          'passengerCnic': passengerCnic,
+          'fare': farePerSeat,
+          'paymentMethod': paymentMethod,
+          'terminalCity': terminalCity,
+          'terminalName': terminalName,
+          'agentName': agentName,
+          'bookingDate': bookingDate,
+          'status': 'Confirmed',
+          'createdAt': nowIso,
+        };
+      }).toList();
+
+      await client.from('terminal_bookings').insert(camelRows);
+    } catch (e1) {
+      try {
+        // Fallback: snake_case columns
+        final snakeRows = seatNumbers.map((seat) {
+          return {
+            'bus_id': busId,
+            'seat_number': seat,
+            'gender': seatGenders[seat] ?? 'Male',
+            'passenger_name': passengerName,
+            'passenger_phone': passengerPhone,
+            'passenger_cnic': passengerCnic,
+            'fare': farePerSeat,
+            'payment_method': paymentMethod,
+            'terminal_city': terminalCity,
+            'terminal_name': terminalName,
+            'agent_name': agentName,
+            'booking_date': bookingDate,
+            'status': 'Confirmed',
+            'created_at': nowIso,
+          };
+        }).toList();
+
+        await client.from('terminal_bookings').insert(snakeRows);
+      } catch (e2) {
+        print('Supabase terminal_bookings insert failed. Error: $e1 / $e2');
+      }
+    }
+
+    // 2. Payments table in Supabase
+    try {
+      await insertPayment(
+        busId: busId,
+        seats: seatNumbers.join(', '),
+        amount: totalAmount,
+        date: bookingDate,
+        passengerName: passengerName,
+        passengerCnic: passengerCnic,
+        passengerPhone: passengerPhone,
+        paymentMethod: paymentMethod,
+        accountNumber: "COUNTER-POS",
+        email: "counter.$passengerPhone@busverse.pos",
+      );
+    } catch (e) {
+      print('Error inserting Supabase payment: $e');
+    }
+
+    // 3. Bookings table in Supabase for live seat blocking across devices
+    try {
+      await createBooking(
+        firebaseUid: "terminal_agent",
+        userEmail: "counter.$passengerPhone@busverse.pos",
+        busId: busId,
+        seatNumbers: seatNumbers,
+        seatGenders: seatGenders,
+        bookingDate: bookingDate,
+      );
+    } catch (e) {
+      print('Error creating Supabase seat booking: $e');
+    }
+
+    return true;
+  }
+
+  // ============================================================
   // FEEDBACK & COMPLAINTS
   // ============================================================
   Future<bool> addFeedback(String userEmail, String message) async {
@@ -283,6 +389,66 @@ class SupabaseService {
       return true;
     } catch (e) {
       print('Error upserting profile: $e');
+      return false;
+    }
+  }
+
+  // ============================================================
+  // TERMINAL AGENTS & SHIFTS (SUPABASE)
+  // ============================================================
+  Future<List<Map<String, dynamic>>> getTerminalAgentsFromCloud(String? terminalCity) async {
+    try {
+      var query = client.from('terminal_agents').select();
+      if (terminalCity != null && terminalCity.isNotEmpty) {
+        query = query.ilike('terminal_city', '%$terminalCity%');
+      }
+      final response = await query.order('id', ascending: true);
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      print('Error fetching terminal agents from Supabase: $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>?> addTerminalAgentToCloud({
+    required String agentCode,
+    required String name,
+    required String pin,
+    required String phone,
+    required String terminalCity,
+  }) async {
+    try {
+      final res = await client.from('terminal_agents').insert({
+        'agent_code': agentCode,
+        'name': name,
+        'pin': pin,
+        'phone': phone,
+        'terminal_city': terminalCity,
+        'status': 'active',
+        'created_at': DateTime.now().toIso8601String(),
+      }).select().maybeSingle();
+      return res;
+    } catch (e) {
+      print('Error adding terminal agent to Supabase: $e');
+      return null;
+    }
+  }
+
+  Future<bool> updateTerminalAgentInCloud({
+    required String agentCode,
+    required String name,
+    required String pin,
+    required String phone,
+  }) async {
+    try {
+      await client.from('terminal_agents').update({
+        'name': name,
+        'pin': pin,
+        'phone': phone,
+      }).eq('agent_code', agentCode);
+      return true;
+    } catch (e) {
+      print('Error updating terminal agent in Supabase: $e');
       return false;
     }
   }

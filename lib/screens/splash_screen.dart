@@ -61,114 +61,126 @@ class _SplashScreenState extends State<SplashScreen>
           opacity: _fadeIn,
           child: SlideTransition(
             position: _slideUp,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Column(
-                children: [
-                  const Spacer(flex: 3),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    child: IntrinsicHeight(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 28),
+                        child: Column(
+                          children: [
+                            const Spacer(flex: 2),
 
-                  // ─── Bus Image (Static) ───
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF0F7FF),
-                      borderRadius: BorderRadius.circular(28),
-                    ),
-                    child: Image.asset(
-                      'assets/images/bus_welcome.png',
-                      height: 180,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
+                            // ─── Bus Image (Static) ───
+                            Container(
+                              padding: const EdgeInsets.all(18),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF0F7FF),
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                              child: Image.asset(
+                                'assets/images/bus_welcome.png',
+                                height: 160,
+                                fit: BoxFit.contain,
+                              ),
+                            ),
 
-                  const SizedBox(height: 40),
+                            const SizedBox(height: 32),
 
-                  // ─── Brand Name ───
-                  const Text(
-                    "BusVerse",
-                    style: TextStyle(
-                      fontSize: 38,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF1E293B),
-                      letterSpacing: 1,
-                    ),
-                  ),
+                            // ─── Brand Name ───
+                            const Text(
+                              "BusVerse",
+                              style: TextStyle(
+                                fontSize: 34,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF1E293B),
+                                letterSpacing: 1,
+                              ),
+                            ),
 
-                  const SizedBox(height: 8),
+                            const SizedBox(height: 6),
 
-                  // ─── Tagline ───
-                  const Text(
-                    "Smart Travel & Cargo Network",
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF64748B),
-                      letterSpacing: 0.5,
-                    ),
-                  ),
+                            // ─── Tagline ───
+                            const Text(
+                              "Smart Travel & Cargo Network",
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF64748B),
+                                letterSpacing: 0.5,
+                              ),
+                            ),
 
-                  const SizedBox(height: 6),
+                            const SizedBox(height: 4),
 
-                  // ─── Powered by ───
-                  const Text(
-                    "by Junaid Movers",
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w400,
-                      color: Color(0xFF94A3B8),
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
+                            // ─── Powered by ───
+                            const Text(
+                              "by Junaid Movers",
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w400,
+                                color: Color(0xFF94A3B8),
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
 
-                  const Spacer(flex: 3),
+                            const Spacer(flex: 3),
 
-                  // ─── Get Started Button ───
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: _onGetStarted,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF388AF6),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                            // ─── Get Started Button ───
+                            SizedBox(
+                              width: double.infinity,
+                              height: 52,
+                              child: ElevatedButton(
+                                onPressed: _onGetStarted,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF388AF6),
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      "Get Started",
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                    SizedBox(width: 8),
+                                    Icon(Icons.arrow_forward_rounded, size: 20),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            // ─── Bottom tagline ───
+                            const Text(
+                              "Fast • Comfortable • Reliable",
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: Color(0xFFB0BEC5),
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+
+                            const SizedBox(height: 20),
+                          ],
                         ),
                       ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            "Get Started",
-                            style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                          SizedBox(width: 8),
-                          Icon(Icons.arrow_forward_rounded, size: 22),
-                        ],
-                      ),
                     ),
                   ),
-
-                  const SizedBox(height: 16),
-
-                  // ─── Bottom tagline ───
-                  const Text(
-                    "Fast • Comfortable • Reliable",
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFFB0BEC5),
-                      letterSpacing: 1,
-                    ),
-                  ),
-
-                  const SizedBox(height: 32),
-                ],
-              ),
+                );
+              },
             ),
           ),
         ),

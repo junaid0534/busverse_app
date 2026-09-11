@@ -93,7 +93,7 @@ class _AvailableBusesUserScreenState extends State<AvailableBusesUserScreen> {
         elevation: 0.5,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: darkText, size: 20),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: darkText, size: 19),
           onPressed: () => Navigator.pop(context),
         ),
         title: Column(
@@ -105,20 +105,20 @@ class _AvailableBusesUserScreenState extends State<AvailableBusesUserScreen> {
                   fromCity,
                   style: const TextStyle(
                     color: darkText,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 6),
-                  child: Icon(Icons.arrow_forward_rounded, size: 14, color: primaryBlue),
+                  child: Icon(Icons.arrow_forward_rounded, size: 13, color: primaryBlue),
                 ),
                 Text(
                   toCity,
                   style: const TextStyle(
                     color: darkText,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
@@ -129,7 +129,7 @@ class _AvailableBusesUserScreenState extends State<AvailableBusesUserScreen> {
               style: const TextStyle(
                 color: subText,
                 fontSize: 11,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w400,
               ),
             ),
           ],
@@ -324,8 +324,8 @@ class _AnimatedBusCardState extends State<_AnimatedBusCard>
                           child: Text(
                             "Bus #${b.busNumber}",
                             style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
                               color: darkText,
                             ),
                             maxLines: 1,
@@ -344,7 +344,7 @@ class _AnimatedBusCardState extends State<_AnimatedBusCard>
                   animation: _glowAnimation,
                   builder: (context, child) {
                     return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
@@ -352,7 +352,7 @@ class _AnimatedBusCardState extends State<_AnimatedBusCard>
                             primaryBlue.withOpacity(_glowAnimation.value),
                           ],
                         ),
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(5),
                         boxShadow: [
                           BoxShadow(
                             color: primaryBlue.withOpacity(_glowAnimation.value * 0.3),
@@ -365,8 +365,8 @@ class _AnimatedBusCardState extends State<_AnimatedBusCard>
                         b.busClass,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
                           letterSpacing: 0.2,
                         ),
                       ),
@@ -383,12 +383,12 @@ class _AnimatedBusCardState extends State<_AnimatedBusCard>
                       return Transform.scale(
                         scale: _scaleAnimation.value,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
                               colors: [Color(0xFFFF3366), Color(0xFFFF6B4A)],
                             ),
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: BorderRadius.circular(5),
                             boxShadow: [
                               BoxShadow(
                                 color: const Color(0xFFFF3366).withOpacity(0.35),
@@ -400,14 +400,14 @@ class _AnimatedBusCardState extends State<_AnimatedBusCard>
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.local_fire_department_rounded, size: 11, color: Colors.white),
+                              const Icon(Icons.local_fire_department_rounded, size: 10, color: Colors.white),
                               const SizedBox(width: 2),
                               Text(
                                 b.discountLabel,
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w800,
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ],
@@ -425,7 +425,7 @@ class _AnimatedBusCardState extends State<_AnimatedBusCard>
 
           // ─── MIDDLE: VERTICAL ROUTE TIMELINE (From on Top -> Arrow -> To on Bottom) ───
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -434,18 +434,18 @@ class _AnimatedBusCardState extends State<_AnimatedBusCard>
                   children: [
                     // From Dot
                     Container(
-                      width: 14,
-                      height: 14,
+                      width: 12,
+                      height: 12,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: Colors.white,
-                        border: Border.all(color: primaryBlue, width: 3.5),
+                        border: Border.all(color: primaryBlue, width: 3),
                       ),
                     ),
                     // Vertical Journey Line with Downward Arrow in center
                     Container(
-                      width: 2,
-                      height: 14,
+                      width: 1.5,
+                      height: 12,
                       color: const Color(0xFFCBD5E1),
                     ),
                     Container(
@@ -456,29 +456,29 @@ class _AnimatedBusCardState extends State<_AnimatedBusCard>
                       ),
                       child: const Icon(
                         Icons.keyboard_arrow_down_rounded,
-                        size: 16,
+                        size: 14,
                         color: primaryBlue,
                       ),
                     ),
                     Container(
-                      width: 2,
-                      height: 14,
+                      width: 1.5,
+                      height: 12,
                       color: const Color(0xFFCBD5E1),
                     ),
                     // To Dot
                     Container(
-                      width: 14,
-                      height: 14,
+                      width: 12,
+                      height: 12,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: Colors.white,
-                        border: Border.all(color: Colors.redAccent, width: 3.5),
+                        border: Border.all(color: Colors.redAccent, width: 3),
                       ),
                     ),
                   ],
                 ),
 
-                const SizedBox(width: 14),
+                const SizedBox(width: 12),
 
                 // City Names & Details
                 Expanded(
@@ -492,28 +492,28 @@ class _AnimatedBusCardState extends State<_AnimatedBusCard>
                             child: Text(
                               b.fromCity,
                               style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w800,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
                                 color: darkText,
                               ),
                             ),
                           ),
                           // Departure Time Badge
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                             decoration: BoxDecoration(
                               color: const Color(0xFFF0F7FF),
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(5),
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.access_time_filled_rounded, size: 13, color: primaryBlue),
+                                const Icon(Icons.access_time_filled_rounded, size: 12, color: primaryBlue),
                                 const SizedBox(width: 4),
                                 Text(
                                   b.time,
                                   style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w800,
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
                                     color: primaryBlue,
                                   ),
                                 ),
@@ -523,7 +523,7 @@ class _AnimatedBusCardState extends State<_AnimatedBusCard>
                         ],
                       ),
 
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
 
                       // VIA ROUTE (Middle)
                       if (b.routeVia.isNotEmpty)
@@ -539,7 +539,7 @@ class _AnimatedBusCardState extends State<_AnimatedBusCard>
                                   style: const TextStyle(
                                     fontSize: 11,
                                     color: subText,
-                                    fontWeight: FontWeight.w500,
+                                    fontWeight: FontWeight.w400,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -549,16 +549,16 @@ class _AnimatedBusCardState extends State<_AnimatedBusCard>
                           ),
                         )
                       else
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 8),
 
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
 
                       // TO CITY (Bottom)
                       Text(
                         b.toCity,
                         style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
                           color: darkText,
                         ),
                       ),
@@ -571,34 +571,34 @@ class _AnimatedBusCardState extends State<_AnimatedBusCard>
 
           // ─── AMENITIES & SEATS INFO ───
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 14),
             child: Wrap(
-              spacing: 8,
+              spacing: 6,
               runSpacing: 4,
               children: [
                 // Seats Left Tag
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                   decoration: BoxDecoration(
                     color: isSoldOut
                         ? Colors.redAccent.withOpacity(0.1)
                         : primaryBlue.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(5),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
                         Icons.airline_seat_recline_extra_rounded,
-                        size: 13,
+                        size: 12,
                         color: isSoldOut ? Colors.redAccent : primaryBlue,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         isSoldOut ? "Sold Out" : "$seatsLeft Seats Left",
                         style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w600,
                           color: isSoldOut ? Colors.redAccent : primaryBlue,
                         ),
                       ),
@@ -609,19 +609,19 @@ class _AnimatedBusCardState extends State<_AnimatedBusCard>
                 // Refreshment tag
                 if (b.refreshment)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(5),
                     ),
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.restaurant_rounded, size: 12, color: subText),
+                        Icon(Icons.restaurant_rounded, size: 11, color: subText),
                         SizedBox(width: 4),
                         Text(
                           "Refreshment",
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: subText),
+                          style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w500, color: subText),
                         ),
                       ],
                     ),
@@ -630,19 +630,19 @@ class _AnimatedBusCardState extends State<_AnimatedBusCard>
                 // Driver Name (only if admin added driver)
                 if (b.driverName.isNotEmpty)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(5),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.person_outline_rounded, size: 12, color: subText),
+                        const Icon(Icons.person_outline_rounded, size: 11, color: subText),
                         const SizedBox(width: 4),
                         Text(
                           b.driverName,
-                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: subText),
+                          style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w500, color: subText),
                         ),
                       ],
                     ),
@@ -651,12 +651,12 @@ class _AnimatedBusCardState extends State<_AnimatedBusCard>
             ),
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           const Divider(height: 1, color: Color(0xFFF1F5F9)),
 
           // ─── BOTTOM ROW: FARE & SELECT SEATS ACTION ───
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+            padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
             child: Row(
               children: [
                 // Fare details
@@ -668,8 +668,8 @@ class _AnimatedBusCardState extends State<_AnimatedBusCard>
                         Text(
                           "PKR ${b.fare.toStringAsFixed(0)}",
                           style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.w700,
                             color: darkText,
                           ),
                         ),
@@ -678,7 +678,7 @@ class _AnimatedBusCardState extends State<_AnimatedBusCard>
                           Text(
                             "PKR ${b.originalFare.toStringAsFixed(0)}",
                             style: const TextStyle(
-                              fontSize: 12,
+                              fontSize: 11,
                               color: Color(0xFF94A3B8),
                               decoration: TextDecoration.lineThrough,
                             ),
@@ -688,7 +688,7 @@ class _AnimatedBusCardState extends State<_AnimatedBusCard>
                     ),
                     const Text(
                       "per seat",
-                      style: TextStyle(fontSize: 10.5, color: subText),
+                      style: TextStyle(fontSize: 10, color: subText),
                     ),
                   ],
                 ),
@@ -697,15 +697,15 @@ class _AnimatedBusCardState extends State<_AnimatedBusCard>
 
                 // Select Seats Action Button
                 SizedBox(
-                  height: 40,
+                  height: 38,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: isSoldOut ? const Color(0xFFE2E8F0) : primaryBlue,
                       foregroundColor: isSoldOut ? subText : Colors.white,
                       elevation: 0,
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                     ),
                     onPressed: isSoldOut
@@ -730,13 +730,13 @@ class _AnimatedBusCardState extends State<_AnimatedBusCard>
                         Text(
                           isSoldOut ? "Sold Out" : "Select Seats",
                           style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                         if (!isSoldOut) ...[
                           const SizedBox(width: 6),
-                          const Icon(Icons.arrow_forward_rounded, size: 16),
+                          const Icon(Icons.arrow_forward_rounded, size: 15),
                         ],
                       ],
                     ),

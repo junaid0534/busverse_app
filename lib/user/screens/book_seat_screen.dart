@@ -103,44 +103,44 @@ class _BookSeatScreenState extends State<BookSeatScreen> {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               Text(
                 "Select Passenger for Seat #$seatNumber",
                 style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
                   color: darkText,
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               const Text(
                 "Please specify passenger gender for seat allocation",
-                style: TextStyle(fontSize: 12, color: subText),
+                style: TextStyle(fontSize: 11.5, color: subText),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
               Row(
                 children: [
                   // Male Option
                   Expanded(
                     child: InkWell(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(12),
                       onTap: () => Navigator.pop(ctx, "M"),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                         decoration: BoxDecoration(
                           color: const Color(0xFFEFF6FF),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: const Color(0xFFBFDBFE), width: 1.5),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFBFDBFE), width: 1.2),
                         ),
                         child: const Column(
                           children: [
-                            Icon(Icons.man_rounded, size: 36, color: maleColor),
-                            SizedBox(height: 6),
+                            Icon(Icons.man_rounded, size: 32, color: maleColor),
+                            SizedBox(height: 4),
                             Text(
                               "Male",
                               style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
                                 color: maleColor,
                               ),
                             ),
@@ -150,29 +150,29 @@ class _BookSeatScreenState extends State<BookSeatScreen> {
                     ),
                   ),
 
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 12),
 
                   // Female Option
                   Expanded(
                     child: InkWell(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(12),
                       onTap: () => Navigator.pop(ctx, "F"),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                         decoration: BoxDecoration(
                           color: const Color(0xFFFDF2F8),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: const Color(0xFFFBCFE8), width: 1.5),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFFBCFE8), width: 1.2),
                         ),
                         child: const Column(
                           children: [
-                            Icon(Icons.woman_rounded, size: 36, color: femaleColor),
-                            SizedBox(height: 6),
+                            Icon(Icons.woman_rounded, size: 32, color: femaleColor),
+                            SizedBox(height: 4),
                             Text(
                               "Female",
                               style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
                                 color: femaleColor,
                               ),
                             ),
@@ -183,7 +183,7 @@ class _BookSeatScreenState extends State<BookSeatScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
             ],
           ),
         );
@@ -225,7 +225,7 @@ class _BookSeatScreenState extends State<BookSeatScreen> {
         elevation: 0.5,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: darkText, size: 20),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: darkText, size: 19),
           onPressed: () => Navigator.pop(context),
         ),
         title: Column(
@@ -234,8 +234,8 @@ class _BookSeatScreenState extends State<BookSeatScreen> {
               "${widget.bus.fromCity} → ${widget.bus.toCity}",
               style: const TextStyle(
                 color: darkText,
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
+                fontSize: 14.5,
+                fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 2),
@@ -244,7 +244,7 @@ class _BookSeatScreenState extends State<BookSeatScreen> {
               style: const TextStyle(
                 color: subText,
                 fontSize: 11,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ],
@@ -421,8 +421,8 @@ class _BookSeatScreenState extends State<BookSeatScreen> {
                               ? "No seats selected"
                               : "${selectedSeats.length} ${selectedSeats.length == 1 ? 'Seat' : 'Seats'}: ${selectedSeats.map((s) => '#$s(${seatGender[s] ?? "M"})').join(', ')}",
                           style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w500,
                             color: subText,
                           ),
                           maxLines: 1,
@@ -432,8 +432,8 @@ class _BookSeatScreenState extends State<BookSeatScreen> {
                         Text(
                           "PKR ${totalFare.toStringAsFixed(0)}",
                           style: const TextStyle(
-                            fontSize: 19,
-                            fontWeight: FontWeight.w900,
+                            fontSize: 16.5,
+                            fontWeight: FontWeight.w700,
                             color: darkText,
                           ),
                         ),
@@ -443,23 +443,23 @@ class _BookSeatScreenState extends State<BookSeatScreen> {
 
                   // Proceed Button
                   SizedBox(
-                    height: 44,
+                    height: 42,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: selectedSeats.isEmpty ? const Color(0xFFE2E8F0) : primaryBlue,
                         foregroundColor: selectedSeats.isEmpty ? subText : Colors.white,
                         elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        padding: const EdgeInsets.symmetric(horizontal: 18),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                       ),
                       onPressed: selectedSeats.isEmpty
                           ? null
                           : () {
                               final String travelDate = (widget.bus.date.isNotEmpty && widget.bus.date != "0000-00-00")
-                                  ? widget.bus.date
-                                  : dateKey;
+                                   ? widget.bus.date
+                                   : dateKey;
                               Navigator.pushNamed(
                                 context,
                                 '/passenger_details',
@@ -478,12 +478,12 @@ class _BookSeatScreenState extends State<BookSeatScreen> {
                           Text(
                             "Proceed",
                             style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                           SizedBox(width: 6),
-                          Icon(Icons.arrow_forward_rounded, size: 16),
+                          Icon(Icons.arrow_forward_rounded, size: 15),
                         ],
                       ),
                     ),
@@ -530,16 +530,16 @@ class _BookSeatScreenState extends State<BookSeatScreen> {
       onTap: () => _onSeatTap(seatNumber),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        height: 48,
+        height: 44,
         decoration: BoxDecoration(
           color: bgColor,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: borderColor, width: isSelected ? 1.5 : 1.2),
+          borderRadius: BorderRadius.circular(9),
+          border: Border.all(color: borderColor, width: isSelected ? 1.4 : 1.1),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: (selectedGender == "F" ? femaleColor : primaryBlue).withOpacity(0.3),
-                    blurRadius: 6,
+                    color: (selectedGender == "F" ? femaleColor : primaryBlue).withOpacity(0.25),
+                    blurRadius: 5,
                     offset: const Offset(0, 2),
                   ),
                 ]
@@ -548,13 +548,13 @@ class _BookSeatScreenState extends State<BookSeatScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(seatIcon, size: 16, color: contentColor),
+            Icon(seatIcon, size: 15, color: contentColor),
             const SizedBox(height: 2),
             Text(
               "$seatNumber",
               style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
+                fontSize: 10.5,
+                fontWeight: FontWeight.w700,
                 color: contentColor,
               ),
             ),
@@ -569,11 +569,11 @@ class _BookSeatScreenState extends State<BookSeatScreen> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 14,
-          height: 14,
+          width: 12,
+          height: 12,
           decoration: BoxDecoration(
             color: color,
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(3),
             border: Border.all(
               color: borderColor ?? color,
               width: 1.2,
@@ -585,7 +585,7 @@ class _BookSeatScreenState extends State<BookSeatScreen> {
           label,
           style: const TextStyle(
             fontSize: 11,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w500,
             color: subText,
           ),
         ),

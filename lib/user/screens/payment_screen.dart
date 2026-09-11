@@ -251,12 +251,12 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
             stepTitles[_currentStep],
             style: const TextStyle(
               color: darkText,
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
             ),
           ),
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: darkText, size: 20),
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: darkText, size: 18),
             onPressed: _handleBackNavigation,
           ),
         ),
@@ -317,21 +317,21 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
     return Row(
       children: [
         Container(
-          width: 24,
-          height: 24,
+          width: 22,
+          height: 22,
           decoration: BoxDecoration(
             color: circleColor,
             shape: BoxShape.circle,
           ),
           child: Center(
             child: isCompleted
-                ? const Icon(Icons.check, size: 14, color: Colors.white)
+                ? const Icon(Icons.check, size: 12, color: Colors.white)
                 : Text(
                     "${stepIndex + 1}",
                     style: TextStyle(
                       color: isCurrent ? Colors.white : subText,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
           ),
@@ -340,8 +340,8 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
         Text(
           title,
           style: TextStyle(
-            fontSize: 12,
-            fontWeight: isCurrent ? FontWeight.w800 : FontWeight.w600,
+            fontSize: 11.5,
+            fontWeight: isCurrent ? FontWeight.w600 : FontWeight.w500,
             color: textColor,
           ),
         ),
@@ -390,15 +390,15 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
                 Icon(
                   Icons.lock_clock_rounded,
                   color: _secondsRemaining < 120 ? Colors.redAccent : primaryBlue,
-                  size: 20,
+                  size: 18,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     "Seats ${widget.selectedSeats.map((s) => "#$s").join(", ")} held for you",
                     style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
                       color: _secondsRemaining < 120 ? Colors.red.shade900 : const Color(0xFF1E40AF),
                     ),
                   ),
@@ -418,8 +418,8 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
                   child: Text(
                     _formatTimer(_secondsRemaining),
                     style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
                       fontFamily: 'monospace',
                       color: _secondsRemaining < 120 ? Colors.redAccent : primaryBlue,
                     ),
@@ -460,12 +460,12 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
                             color: primaryBlue.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Icon(Icons.directions_bus_rounded, color: primaryBlue, size: 18),
+                          child: const Icon(Icons.directions_bus_rounded, color: primaryBlue, size: 16),
                         ),
                         const SizedBox(width: 8),
                         Text(
                           "${widget.bus.fromCity} → ${widget.bus.toCity}",
-                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: darkText),
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: darkText),
                         ),
                       ],
                     ),
@@ -477,7 +477,7 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
                       ),
                       child: Text(
                         widget.bus.busClass,
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: subText),
+                        style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w500, color: subText),
                       ),
                     ),
                   ],
@@ -515,7 +515,7 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
                     SizedBox(width: 6),
                     Text(
                       "Apply Promo / Discount Voucher",
-                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: darkText),
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: darkText),
                     ),
                   ],
                 ),
@@ -526,10 +526,10 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
                       child: TextField(
                         controller: promoController,
                         textCapitalization: TextCapitalization.characters,
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 1.1),
+                        style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, letterSpacing: 1.1),
                         decoration: InputDecoration(
                           hintText: "Enter BUSVERSE or WELCOME",
-                          hintStyle: const TextStyle(fontSize: 11.5, color: Color(0xFF94A3B8), letterSpacing: 0),
+                          hintStyle: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8), letterSpacing: 0),
                           filled: true,
                           fillColor: const Color(0xFFF8FAFC),
                           isDense: true,
@@ -555,7 +555,7 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                       ),
-                      child: const Text("Apply", style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+                      child: const Text("Apply", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                     ),
                   ],
                 ),
@@ -565,7 +565,7 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
                     _promoMessage,
                     style: TextStyle(
                       fontSize: 11,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
                       color: _isPromoApplied ? const Color(0xFF16A34A) : Colors.redAccent,
                     ),
                   ),
@@ -594,8 +594,8 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text("Promo Discount ($_appliedPromoCode)", style: const TextStyle(fontSize: 12, color: Color(0xFF16A34A), fontWeight: FontWeight.w600)),
-                      Text("- PKR ${_discountAmount.toStringAsFixed(0)}", style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: Color(0xFF16A34A))),
+                      Text("Promo Discount ($_appliedPromoCode)", style: const TextStyle(fontSize: 11.5, color: Color(0xFF16A34A), fontWeight: FontWeight.w500)),
+                      Text("- PKR ${_discountAmount.toStringAsFixed(0)}", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF16A34A))),
                     ],
                   ),
                 ],
@@ -603,10 +603,10 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text("Total Payable", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: darkText)),
+                    const Text("Total Payable", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: darkText)),
                     Text(
                       "PKR ${finalPayable.toStringAsFixed(0)}",
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: primaryBlue),
+                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: primaryBlue),
                     ),
                   ],
                 ),
@@ -619,7 +619,7 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
           // 🚀 Continue to Step 2 Button
           SizedBox(
             width: double.infinity,
-            height: 50,
+            height: 48,
             child: ElevatedButton(
               onPressed: () => _goToStep(1),
               style: ElevatedButton.styleFrom(
@@ -631,9 +631,9 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text("Continue to Payment Method", style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
+                  Text("Continue to Payment Method", style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
                   SizedBox(width: 8),
-                  Icon(Icons.arrow_forward_rounded, size: 18),
+                  Icon(Icons.arrow_forward_rounded, size: 16),
                 ],
               ),
             ),
@@ -668,13 +668,13 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
                 const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("Payable Amount", style: TextStyle(fontSize: 11.5, color: subText, fontWeight: FontWeight.w600)),
-                    Text("Total for Booking", style: TextStyle(fontSize: 13, color: darkText, fontWeight: FontWeight.w700)),
+                    Text("Payable Amount", style: TextStyle(fontSize: 11, color: subText, fontWeight: FontWeight.w500)),
+                    Text("Total for Booking", style: TextStyle(fontSize: 12.5, color: darkText, fontWeight: FontWeight.w600)),
                   ],
                 ),
                 Text(
                   "PKR ${finalPayable.toStringAsFixed(0)}",
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: primaryBlue),
+                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: primaryBlue),
                 ),
               ],
             ),
@@ -684,7 +684,7 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
 
           const Text(
             "Choose Payment Gateway",
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: darkText),
+            style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: darkText),
           ),
           const SizedBox(height: 10),
 
@@ -741,9 +741,9 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: Color(0xFFCBD5E1)),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
                   ),
-                  child: const Text("Back", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: darkText)),
+                  child: const Text("Back", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: darkText)),
                 ),
               ),
               const SizedBox(width: 12),
@@ -756,12 +756,12 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
                   ),
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text("Continue", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                      Text("Continue", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                       SizedBox(width: 6),
                       Icon(Icons.arrow_forward_rounded, size: 16),
                     ],
@@ -803,13 +803,13 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
                     const SizedBox(width: 8),
                     Text(
                       "Method: $selectedPayment",
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF1E40AF)),
+                      style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF1E40AF)),
                     ),
                   ],
                 ),
                 GestureDetector(
                   onTap: () => _goToStep(1),
-                  child: const Text("Change", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: primaryBlue)),
+                  child: const Text("Change", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: primaryBlue)),
                 ),
               ],
             ),
@@ -836,7 +836,7 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
                 SizedBox(width: 6),
                 Text(
                   "State Bank & 256-Bit SSL Encrypted Gateway",
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: subText),
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: subText),
                 ),
               ],
             ),
@@ -847,7 +847,7 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
           // Final Confirm & Pay Button
           SizedBox(
             width: double.infinity,
-            height: 50,
+            height: 48,
             child: ElevatedButton(
               onPressed: _isProcessing ? null : () => _initiateRealtimePayment(finalPayable),
               style: ElevatedButton.styleFrom(
@@ -870,7 +870,7 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
                         const SizedBox(width: 8),
                         Text(
                           "Pay PKR ${finalPayable.toStringAsFixed(0)} & Confirm",
-                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                         ),
                       ],
                     ),
@@ -899,7 +899,7 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
             _buildInteractiveCardPreview(),
             const SizedBox(height: 16),
 
-            const Text("Card Number", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: darkText)),
+            const Text("Card Number", style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: darkText)),
             const SizedBox(height: 5),
             TextField(
               controller: cardNumberController,
@@ -910,7 +910,7 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
                 _CardNumberInputFormatter(),
               ],
               onChanged: (_) => setState(() {}),
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, letterSpacing: 1.2),
+              style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, letterSpacing: 1.2),
               decoration: _inputDecoration(hint: "0000 0000 0000 0000", icon: Icons.credit_card_rounded),
             ),
 
@@ -922,7 +922,7 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text("Expiry (MM/YY)", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: darkText)),
+                      const Text("Expiry (MM/YY)", style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: darkText)),
                       const SizedBox(height: 5),
                       TextField(
                         controller: cardExpiryController,
@@ -933,7 +933,7 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
                           _CardExpiryInputFormatter(),
                         ],
                         onChanged: (_) => setState(() {}),
-                        style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                         decoration: _inputDecoration(hint: "MM/YY", icon: Icons.calendar_month_rounded),
                       ),
                     ],
@@ -944,7 +944,7 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text("CVV / CVC", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: darkText)),
+                      const Text("CVV / CVC", style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: darkText)),
                       const SizedBox(height: 5),
                       TextField(
                         controller: cardCvvController,
@@ -955,7 +955,7 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
                           LengthLimitingTextInputFormatter(4),
                         ],
                         onChanged: (_) => setState(() {}),
-                        style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                         decoration: _inputDecoration(hint: "123", icon: Icons.shield_rounded),
                       ),
                     ],
@@ -966,13 +966,13 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
 
             const SizedBox(height: 12),
 
-            const Text("Cardholder Name", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: darkText)),
+            const Text("Cardholder Name", style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: darkText)),
             const SizedBox(height: 5),
             TextField(
               controller: cardHolderController,
               textCapitalization: TextCapitalization.characters,
               onChanged: (_) => setState(() {}),
-              style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
               decoration: _inputDecoration(hint: "NAME AS ON CARD", icon: Icons.person_rounded),
             ),
 
@@ -1011,25 +1011,25 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
                   const Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text("BusVerse In-App Wallet", style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
-                      Icon(Icons.wallet_rounded, color: Colors.white, size: 20),
+                      Text("BusVerse In-App Wallet", style: TextStyle(color: Colors.white70, fontSize: 11.5, fontWeight: FontWeight.w500)),
+                      Icon(Icons.wallet_rounded, color: Colors.white, size: 18),
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Text("PKR ${_walletBalance.toStringAsFixed(0)}", style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900)),
+                  Text("PKR ${_walletBalance.toStringAsFixed(0)}", style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 10),
                   const Divider(color: Colors.white24, height: 1),
                   const SizedBox(height: 10),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text("Balance after deduction:", style: TextStyle(color: Colors.white70, fontSize: 11.5)),
+                      const Text("Balance after deduction:", style: TextStyle(color: Colors.white70, fontSize: 11)),
                       Text(
                         hasSufficient ? "PKR ${remaining.toStringAsFixed(0)}" : "Insufficient Balance",
                         style: TextStyle(
                           color: hasSufficient ? const Color(0xFF86EFAC) : Colors.amberAccent,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
@@ -1061,24 +1061,24 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.info_outline_rounded, color: primaryBlue, size: 22),
+                  Icon(Icons.info_outline_rounded, color: primaryBlue, size: 20),
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       "Your seats will be reserved. Please pay cash at the Junaid Movers departure counter at least 30 minutes before bus departure.",
-                      style: TextStyle(fontSize: 12, color: darkText, height: 1.3),
+                      style: TextStyle(fontSize: 11.5, color: darkText, height: 1.3),
                     ),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 14),
-            const Text("Contact Mobile Number for SMS Ticket", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: darkText)),
+            const Text("Contact Mobile Number for SMS Ticket", style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: darkText)),
             const SizedBox(height: 5),
             TextField(
               controller: accountController,
               keyboardType: TextInputType.phone,
-              style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
               decoration: _inputDecoration(hint: "03001234567", icon: Icons.phone_iphone_rounded),
             ),
             const SizedBox(height: 12),
@@ -1115,7 +1115,7 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
                   Icon(
                     Icons.bolt_rounded,
                     color: isJazz ? const Color(0xFFDC2626) : const Color(0xFF059669),
-                    size: 20,
+                    size: 18,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -1123,7 +1123,7 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
                       "A real-time prompt will appear on your $selectedPayment App to authorize PKR ${totalAmount.toStringAsFixed(0)}.",
                       style: TextStyle(
                         fontSize: 11.5,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                         color: isJazz ? const Color(0xFF991B1B) : const Color(0xFF065F46),
                         height: 1.3,
                       ),
@@ -1137,13 +1137,13 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
 
             Text(
               "$selectedPayment Registered Mobile Number",
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: darkText),
+              style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: darkText),
             ),
             const SizedBox(height: 5),
             TextField(
               controller: accountController,
               keyboardType: TextInputType.phone,
-              style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
               decoration: _inputDecoration(hint: "03XXXXXXXXX", icon: Icons.phone_android_rounded),
             ),
 
@@ -1161,13 +1161,13 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
       children: [
         const Text(
           "Email Address for Official PDF E-Ticket",
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: darkText),
+          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: darkText),
         ),
         const SizedBox(height: 5),
         TextField(
           controller: emailController,
           keyboardType: TextInputType.emailAddress,
-          style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
           decoration: _inputDecoration(
             hint: "Enter your email for receipt & e-ticket",
             icon: Icons.email_outlined,
@@ -1194,9 +1194,9 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
     }
 
     return Container(
-      height: 175,
+      height: 165,
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFF0F172A), Color(0xFF1E3A8A), Color(0xFF2563EB)],
@@ -1220,22 +1220,22 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                width: 36,
-                height: 26,
+                width: 32,
+                height: 24,
                 decoration: BoxDecoration(
                   color: const Color(0xFFFBBF24),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: const Color(0xFFD97706), width: 1.2),
+                  borderRadius: BorderRadius.circular(5),
+                  border: Border.all(color: const Color(0xFFD97706), width: 1),
                 ),
-                child: const Icon(Icons.contactless_rounded, size: 16, color: Color(0xFF78350F)),
+                child: const Icon(Icons.contactless_rounded, size: 14, color: Color(0xFF78350F)),
               ),
               Text(
                 cardBrand,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.5,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.2,
                 ),
               ),
             ],
@@ -1244,9 +1244,9 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
             cardNum,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 2.2,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 2.0,
               fontFamily: 'monospace',
             ),
           ),
@@ -1256,24 +1256,24 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("CARD HOLDER", style: TextStyle(color: Colors.white60, fontSize: 8.5, fontWeight: FontWeight.w600)),
+                  const Text("CARD HOLDER", style: TextStyle(color: Colors.white60, fontSize: 8.5, fontWeight: FontWeight.w500)),
                   const SizedBox(height: 2),
                   Text(
                     holder,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.8),
+                    style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w600, letterSpacing: 0.6),
                   ),
                 ],
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  const Text("EXPIRES", style: TextStyle(color: Colors.white60, fontSize: 8.5, fontWeight: FontWeight.w600)),
+                  const Text("EXPIRES", style: TextStyle(color: Colors.white60, fontSize: 8.5, fontWeight: FontWeight.w500)),
                   const SizedBox(height: 2),
                   Text(
                     expiry,
-                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 0.8),
+                    style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w600, letterSpacing: 0.6),
                   ),
                 ],
               ),
@@ -1359,7 +1359,7 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
 
                   Text(
                     _processingStep < 3 ? "Processing Real-Time Payment" : "Payment & Booking Confirmed!",
-                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: darkText),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: darkText),
                   ),
                   const SizedBox(height: 6),
                   Text(
@@ -1367,7 +1367,7 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
                         ? "Please do not close the app while we communicate with $selectedPayment gateway"
                         : "Your seats are confirmed. Generating your digital boarding pass...",
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 12, color: subText),
+                    style: const TextStyle(fontSize: 11.5, color: subText),
                   ),
 
                   const SizedBox(height: 22),
@@ -1559,8 +1559,8 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
           child: Text(
             title,
             style: TextStyle(
-              fontSize: 12.5,
-              fontWeight: isCurrent || isCompleted ? FontWeight.w700 : FontWeight.w500,
+              fontSize: 12,
+              fontWeight: isCurrent || isCompleted ? FontWeight.w600 : FontWeight.w500,
               color: isCompleted ? const Color(0xFF16A34A) : (isCurrent ? darkText : subText),
             ),
           ),
@@ -1590,11 +1590,11 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: isSelected ? primaryBlue : const Color(0xFFE2E8F0),
-            width: isSelected ? 1.6 : 1,
+            width: isSelected ? 1.5 : 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: isSelected ? primaryBlue.withOpacity(0.1) : Colors.black.withOpacity(0.02),
+              color: isSelected ? primaryBlue.withOpacity(0.08) : Colors.black.withOpacity(0.02),
               blurRadius: 6,
               offset: const Offset(0, 2),
             ),
@@ -1608,7 +1608,7 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
                 color: color.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: color, size: 22),
+              child: Icon(icon, color: color, size: 20),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1620,8 +1620,8 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
                       Text(
                         title,
                         style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
                           color: isSelected ? primaryBlue : darkText,
                         ),
                       ),
@@ -1636,7 +1636,7 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
                           badgeText,
                           style: TextStyle(
                             fontSize: 9,
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w600,
                             color: badgeColor,
                           ),
                         ),
@@ -1654,7 +1654,7 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
             Icon(
               isSelected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
               color: isSelected ? primaryBlue : const Color(0xFFCBD5E1),
-              size: 20,
+              size: 18,
             ),
           ],
         ),
@@ -1665,7 +1665,7 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
   InputDecoration _inputDecoration({required String hint, required IconData icon}) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
+      hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
       prefixIcon: Icon(icon, size: 18, color: primaryBlue),
       filled: true,
       fillColor: const Color(0xFFF8FAFC),
@@ -1690,8 +1690,8 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(title, style: const TextStyle(fontSize: 12, color: subText)),
-        Text(value, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: darkText)),
+        Text(title, style: const TextStyle(fontSize: 11.5, color: subText)),
+        Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: darkText)),
       ],
     );
   }

@@ -101,6 +101,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final int totalBuses = _stats['totalBuses'] ?? 0;
     final int totalRoutes = _stats['totalRoutes'] ?? 0;
     final int totalUsers = _stats['totalUsers'] ?? 0;
+    final int totalSubAdmins = _stats['totalSubAdmins'] ?? 0;
     final int totalBookings = _stats['totalBookings'] ?? 0;
     final int totalComplaints = _stats['totalComplaints'] ?? 0;
     final int totalFeedbacks = _stats['totalFeedbacks'] ?? 0;
@@ -139,6 +140,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         'color': const Color(0xFF10B981),
         'onTap': () async {
           await Navigator.pushNamed(context, '/view_all_booking');
+          _loadDashboardData();
+        },
+      },
+      {
+        'icon': Icons.badge_rounded,
+        'title': 'Terminal Agents',
+        'subtitle': '$totalSubAdmins counter agents',
+        'badge': totalSubAdmins > 0 ? '$totalSubAdmins active' : null,
+        'badgeColor': const Color(0xFF388AF6),
+        'color': const Color(0xFF388AF6),
+        'onTap': () async {
+          await Navigator.pushNamed(context, '/manage_sub_admins');
           _loadDashboardData();
         },
       },

@@ -1,5 +1,6 @@
 // lib/admin/screens/bookings/view_all_booking_screen.dart
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:bus_ticket_system/database/db_helper.dart';
 
 class ViewAllBookingScreen extends StatefulWidget {
@@ -26,6 +27,7 @@ class _ViewAllBookingScreenState extends State<ViewAllBookingScreen> {
   bool isLoading = true;
   String searchQuery = "";
   String paymentFilter = "All"; // "All", "Paid", "Pending"
+  String channelFilter = "All"; // "All", "Online App", "POS Counter"
   final TextEditingController _searchController = TextEditingController();
 
   static const Color primaryBlue = Color(0xFF388AF6);
@@ -91,9 +93,25 @@ class _ViewAllBookingScreenState extends State<ViewAllBookingScreen> {
 
       final rows = await db.rawQuery(query, args);
       final payments = await DBHelper.instance.getPayments();
+      final terminalBookings = await DBHelper.instance.getTerminalBookings();
 
       final enriched = rows.map((r) {
         final seatStr = r['seatNumber']?.toString() ?? '';
+        final int busId = r['busId'] is int ? r['busId'] as int : int.tryParse(r['busId']?.toString() ?? '') ?? 0;
+        final int seatNum = int.tryParse(seatStr) ?? 0;
+
+        // 1. Check if there's a match in terminal_bookings
+        Map<String, dynamic>? matchedTerminal;
+        for (final tb in terminalBookings) {
+          final tbBusId = tb['busId'] is int ? tb['busId'] as int : int.tryParse(tb['busId']?.toString() ?? '') ?? 0;
+          final tbSeat = tb['seatNumber']?.toString() ?? '';
+          if (tbBusId == busId && (tbSeat == seatStr || tb['seatNumber'] == seatNum)) {
+            matchedTerminal = tb;
+            break;
+          }
+        }
+
+        // 2. Check if there's a match in payments
         Map<String, dynamic>? matchedPayment;
         for (final p in payments) {
           if (p['busId'] == r['busId']) {
@@ -104,9 +122,66 @@ class _ViewAllBookingScreenState extends State<ViewAllBookingScreen> {
             }
           }
         }
+
+        // Extract clean passenger info
+        String finalName = "";
+        String finalPhone = "";
+        String finalCnic = "";
+        bool isTerminal = false;
+        String channel = "Online App";
+        String terminalCity = "";
+        String terminalName = "";
+        String agentName = "";
+
+        if (matchedTerminal != null) {
+          finalName = (matchedTerminal['passengerName'] ?? '').toString().trim();
+          finalPhone = (matchedTerminal['passengerPhone'] ?? '').toString().trim();
+          finalCnic = (matchedTerminal['passengerCnic'] ?? '').toString().trim();
+          terminalCity = (matchedTerminal['terminalCity'] ?? '').toString().trim();
+          terminalName = (matchedTerminal['terminalName'] ?? '').toString().trim();
+          agentName = (matchedTerminal['agentName'] ?? '').toString().trim();
+          isTerminal = true;
+          channel = "POS Counter";
+        } else if (matchedPayment != null && (matchedPayment['passengerName'] != null && matchedPayment['passengerName'].toString().trim().isNotEmpty)) {
+          finalName = (matchedPayment['passengerName'] ?? '').toString().trim();
+          finalPhone = (matchedPayment['passengerPhone'] ?? matchedPayment['accountNumber'] ?? '').toString().trim();
+          finalCnic = (matchedPayment['passengerCnic'] ?? '').toString().trim();
+          if (matchedPayment['accountNumber'] == "COUNTER-POS" || r['userId'] == 0) {
+            isTerminal = true;
+            channel = "POS Counter";
+          }
+        }
+
+        if (finalName.isEmpty) {
+          final userFullName = "${r['firstName'] ?? ''} ${r['lastName'] ?? ''}".trim();
+          if (userFullName.isNotEmpty) {
+            finalName = userFullName;
+          } else if (r['userEmail'] != null && r['userEmail'].toString().trim().isNotEmpty) {
+            finalName = r['userEmail'].toString().trim();
+          } else {
+            finalName = isTerminal ? "Counter Passenger" : "Guest Passenger";
+          }
+        }
+
+        if (finalPhone.isEmpty) {
+          finalPhone = (r['userPhone'] ?? '').toString().trim();
+        }
+        if (finalCnic.isEmpty) {
+          finalCnic = (r['userCnic'] ?? '').toString().trim();
+        }
+
         return {
           ...r,
+          'passengerName': finalName,
+          'passengerPhone': finalPhone,
+          'passengerCnic': finalCnic,
+          'isTerminal': isTerminal,
+          'channel': channel,
+          'terminalCity': terminalCity,
+          'terminalName': terminalName,
+          'agentName': agentName,
           'payment': matchedPayment,
+          'terminal': matchedTerminal,
         };
       }).toList();
 
@@ -127,15 +202,17 @@ class _ViewAllBookingScreenState extends State<ViewAllBookingScreen> {
   void _applyFilters() {
     final q = searchQuery.toLowerCase().trim();
     filteredBookings = allBookings.where((b) {
-      final passengerName = "${b['firstName'] ?? ''} ${b['lastName'] ?? ''}".trim().toLowerCase();
+      final passengerName = (b['passengerName'] ?? '').toString().toLowerCase();
       final userEmail = (b['userEmail'] ?? '').toString().toLowerCase();
-      final userPhone = (b['userPhone'] ?? '').toString().toLowerCase();
-      final userCnic = (b['userCnic'] ?? '').toString().toLowerCase();
+      final userPhone = (b['passengerPhone'] ?? b['userPhone'] ?? '').toString().toLowerCase();
+      final userCnic = (b['passengerCnic'] ?? b['userCnic'] ?? '').toString().toLowerCase();
       final seat = (b['seatNumber'] ?? '').toString().toLowerCase();
       final from = (b['fromCity'] ?? '').toString().toLowerCase();
       final to = (b['toCity'] ?? '').toString().toLowerCase();
       final busName = (b['busName'] ?? '').toString().toLowerCase();
       final busNumber = (b['busNumber'] ?? '').toString().toLowerCase();
+      final terminalCity = (b['terminalCity'] ?? '').toString().toLowerCase();
+      final agentName = (b['agentName'] ?? '').toString().toLowerCase();
       final bookingId = "#${b['bookingId']}".toLowerCase();
 
       final matchesQuery = q.isEmpty ||
@@ -149,14 +226,20 @@ class _ViewAllBookingScreenState extends State<ViewAllBookingScreen> {
           to.contains(q) ||
           busName.contains(q) ||
           busNumber.contains(q) ||
+          terminalCity.contains(q) ||
+          agentName.contains(q) ||
           bookingId.contains(q);
 
-      final isPaid = b['payment'] != null;
+      final isPaid = b['payment'] != null || b['isTerminal'] == true;
       final matchesPayment = paymentFilter == "All" ||
           (paymentFilter == "Paid" && isPaid) ||
           (paymentFilter == "Pending" && !isPaid);
 
-      return matchesQuery && matchesPayment;
+      final matchesChannel = channelFilter == "All" ||
+          (channelFilter == "POS Counter" && b['isTerminal'] == true) ||
+          (channelFilter == "Online App" && b['isTerminal'] != true);
+
+      return matchesQuery && matchesPayment && matchesChannel;
     }).toList();
   }
 
@@ -214,7 +297,39 @@ class _ViewAllBookingScreenState extends State<ViewAllBookingScreen> {
     }
   }
 
-  void _showPaymentDetails(Map<String, dynamic> payment) {
+  String _formatBookingDateTime(Map<String, dynamic> b) {
+    final terminal = b['terminal'] as Map<String, dynamic>?;
+    final payment = b['payment'] as Map<String, dynamic>?;
+
+    final String raw = (terminal?['createdAt'] ?? b['createdAt'] ?? payment?['createdAt'] ?? payment?['date'] ?? b['bookingDate'] ?? '').toString().trim();
+
+    if (raw.isNotEmpty) {
+      try {
+        final dt = DateTime.parse(raw);
+        return DateFormat('dd MMM yyyy, hh:mm a').format(dt.toLocal());
+      } catch (_) {
+        return raw;
+      }
+    }
+    return DateFormat('dd MMM yyyy, hh:mm a').format(DateTime.now());
+  }
+
+  void _showPaymentDetails(Map<String, dynamic> b) {
+    final payment = b['payment'] as Map<String, dynamic>?;
+    final terminal = b['terminal'] as Map<String, dynamic>?;
+    final String passengerName = (b['passengerName'] ?? '').toString().trim();
+    final String seat = (b['seatNumber'] ?? '').toString();
+    final double fare = (b['fare'] as num?)?.toDouble() ?? (payment?['amount'] as num?)?.toDouble() ?? 0.0;
+    final String method = (payment?['paymentMethod'] ?? terminal?['paymentMethod'] ?? (b['isTerminal'] == true ? 'Cash / Counter POS' : 'Paid Online')).toString();
+    final String bookingTimestamp = _formatBookingDateTime(b);
+    final String busTime = (b['time'] ?? 'N/A').toString();
+    final String travelDate = (b['busDate'] ?? b['bookingDate'] ?? 'N/A').toString();
+    final String terminalName = (b['terminalName'] ?? '').toString().trim();
+    final String terminalCity = (b['terminalCity'] ?? '').toString().trim();
+    final String displayTerminal = terminalName.isNotEmpty
+        ? (terminalCity.isNotEmpty ? "$terminalCity • $terminalName" : terminalName)
+        : (terminalCity.isNotEmpty ? "$terminalCity Terminal" : "POS Counter");
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -243,18 +358,22 @@ class _ViewAllBookingScreenState extends State<ViewAllBookingScreen> {
                 Icon(Icons.receipt_long_rounded, color: Color(0xFF10B981), size: 22),
                 SizedBox(width: 8),
                 Text(
-                  "Payment Receipt",
+                  "Booking & Payment Receipt",
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: darkText),
                 ),
               ],
             ),
             const SizedBox(height: 14),
-            _buildReceiptRow("Passenger", payment['passengerName'] ?? 'N/A'),
-            _buildReceiptRow("Account / Phone", payment['accountNumber'] ?? payment['passengerPhone'] ?? 'N/A'),
-            _buildReceiptRow("Payment Method", payment['paymentMethod'] ?? 'Standard'),
-            _buildReceiptRow("Booked Seats", "${payment['seats'] ?? ''}"),
-            _buildReceiptRow("Total Paid", "Rs. ${payment['amount'] ?? '0'}", isHighlight: true),
-            _buildReceiptRow("Payment Date", "${payment['date'] ?? ''}"),
+            _buildReceiptRow("Passenger", passengerName.isNotEmpty ? passengerName : 'Guest Passenger'),
+            _buildReceiptRow("Seat Number", "Seat #$seat"),
+            _buildReceiptRow("Route", "${b['fromCity'] ?? ''} → ${b['toCity'] ?? ''}"),
+            _buildReceiptRow("Payment Method", method),
+            _buildReceiptRow("Total Paid", "Rs. ${fare.toStringAsFixed(0)}", isHighlight: true),
+            const Divider(height: 16, color: Color(0xFFE2E8F0)),
+            _buildReceiptRow("Booked On (Time)", bookingTimestamp, isHighlight: false),
+            _buildReceiptRow("Bus Departure", "$busTime ($travelDate)"),
+            if (b['isTerminal'] == true)
+              _buildReceiptRow("POS Terminal", displayTerminal),
             const SizedBox(height: 10),
           ],
         ),
@@ -266,18 +385,58 @@ class _ViewAllBookingScreenState extends State<ViewAllBookingScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12.5, color: subText)),
           Text(
-            value,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: isHighlight ? FontWeight.w900 : FontWeight.w700,
-              color: isHighlight ? const Color(0xFF10B981) : darkText,
+            label,
+            style: const TextStyle(
+              fontSize: 12.5,
+              color: subText,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isHighlight ? FontWeight.w800 : FontWeight.w600,
+                color: isHighlight ? const Color(0xFF10B981) : darkText,
+              ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDottedDivider() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final boxWidth = constraints.constrainWidth();
+          const dashWidth = 5.0;
+          const dashSpace = 4.0;
+          final dashCount = (boxWidth / (dashWidth + dashSpace)).floor();
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: List.generate(dashCount, (_) {
+              return const SizedBox(
+                width: dashWidth,
+                height: 1.5,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Color(0xFFCBD5E1),
+                    borderRadius: BorderRadius.all(Radius.circular(1)),
+                  ),
+                ),
+              );
+            }),
+          );
+        },
       ),
     );
   }
@@ -317,367 +476,380 @@ class _ViewAllBookingScreenState extends State<ViewAllBookingScreen> {
         ],
       ),
 
-      // ================= BODY =================
-      body: Column(
-        children: [
-          // ─── 1. TOP SEARCH & FILTER BAR ───
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    // Search Input
-                    Expanded(
-                      child: Container(
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
-                        ),
-                        child: TextField(
-                          controller: _searchController,
-                          onChanged: (val) {
-                            setState(() {
-                              searchQuery = val;
-                              _applyFilters();
-                            });
-                          },
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: darkText),
-                          decoration: InputDecoration(
-                            isDense: true,
-                            hintText: "Search passenger, seat, CNIC, route...",
-                            hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
-                            prefixIcon: const Icon(Icons.search_rounded, size: 19, color: primaryBlue),
-                            suffixIcon: searchQuery.isNotEmpty
-                                ? IconButton(
-                                    icon: const Icon(Icons.cancel_rounded, size: 17, color: subText),
-                                    onPressed: () {
-                                      _searchController.clear();
+      // ================= SCROLLABLE BODY =================
+      body: RefreshIndicator(
+        color: primaryBlue,
+        onRefresh: () => fetchBookings(),
+        child: isLoading
+            ? const Center(child: CircularProgressIndicator(color: primaryBlue))
+            : CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                slivers: [
+                  // ─── 1. TOP SEARCH & FILTER BAR (SCROLLABLE WITH SCREEN) ───
+                  SliverToBoxAdapter(
+                    child: Container(
+                      color: Colors.white,
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Search Input & Payment Filter Dropdown
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Container(
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF8FAFC),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                                  ),
+                                  child: TextField(
+                                    controller: _searchController,
+                                    onChanged: (val) {
                                       setState(() {
-                                        searchQuery = "";
+                                        searchQuery = val;
                                         _applyFilters();
                                       });
                                     },
-                                  )
-                                : null,
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
+                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: darkText),
+                                    decoration: InputDecoration(
+                                      isDense: true,
+                                      hintText: "Search name, phone, CNIC, seat...",
+                                      hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                                      prefixIcon: const Icon(Icons.search_rounded, size: 19, color: primaryBlue),
+                                      suffixIcon: searchQuery.isNotEmpty
+                                          ? IconButton(
+                                              icon: const Icon(Icons.cancel_rounded, size: 17, color: subText),
+                                              onPressed: () {
+                                                _searchController.clear();
+                                                setState(() {
+                                                  searchQuery = "";
+                                                  _applyFilters();
+                                                });
+                                              },
+                                            )
+                                          : null,
+                                      border: InputBorder.none,
+                                      contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
 
-                    // Payment Filter Dropdown
-                    Container(
-                      height: 40,
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      decoration: BoxDecoration(
-                        color: primaryBlue,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: primaryBlue),
-                        boxShadow: [
-                          BoxShadow(
-                            color: primaryBlue.withValues(alpha: 0.25),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
+                              // Payment Filter Dropdown
+                              Container(
+                                height: 40,
+                                padding: const EdgeInsets.symmetric(horizontal: 10),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF8FAFC),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                                ),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    value: paymentFilter,
+                                    dropdownColor: Colors.white,
+                                    icon: const Icon(Icons.keyboard_arrow_down_rounded, color: subText, size: 18),
+                                    items: const [
+                                      DropdownMenuItem(value: "All", child: Text("All Status", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: darkText))),
+                                      DropdownMenuItem(value: "Paid", child: Text("Paid", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF16A34A)))),
+                                      DropdownMenuItem(value: "Pending", child: Text("Pending", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFFD97706)))),
+                                    ],
+                                    onChanged: (String? newVal) {
+                                      if (newVal != null) {
+                                        setState(() {
+                                          paymentFilter = newVal;
+                                          _applyFilters();
+                                        });
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 10),
+
+                          // Channel Filter Segment Chips (All, Online App, POS Counter)
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                _buildChannelFilterChip("All", "All Bookings", Icons.all_inclusive_rounded),
+                                const SizedBox(width: 6),
+                                _buildChannelFilterChip("Online App", "Online App", Icons.phone_android_rounded),
+                                const SizedBox(width: 6),
+                                _buildChannelFilterChip("POS Counter", "POS Terminal", Icons.point_of_sale_rounded),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 8),
+
+                          // Stats / Filter Info Chip Row
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                "${filteredBookings.length} of $totalCount Bookings ($paidCount Paid)",
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: subText,
+                                ),
+                              ),
+                              if (widget.busId != null)
+                                InkWell(
+                                  onTap: () => fetchBookings(specificBusId: null),
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: const Padding(
+                                    padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                    child: Text(
+                                      "Clear Bus Filter",
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: primaryBlue,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                         ],
                       ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: paymentFilter,
-                          dropdownColor: Colors.white,
-                          icon: const Padding(
-                            padding: EdgeInsets.only(left: 4),
-                            child: Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 18),
-                          ),
-                          selectedItemBuilder: (context) {
-                            return ["All", "Paid", "Pending"].map((val) {
-                              return Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.tune_rounded, color: Colors.white, size: 13),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    val,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ],
-                              );
-                            }).toList();
-                          },
-                          items: const [
-                            DropdownMenuItem(value: "All", child: Text("All Status", style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: darkText))),
-                            DropdownMenuItem(value: "Paid", child: Text("Paid Only", style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: darkText))),
-                            DropdownMenuItem(value: "Pending", child: Text("Pending Only", style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: darkText))),
-                          ],
-                          onChanged: (String? newVal) {
-                            if (newVal != null) {
-                              setState(() {
-                                paymentFilter = newVal;
-                                _applyFilters();
-                              });
-                            }
-                          },
-                        ),
-                      ),
                     ),
-                  ],
-                ),
+                  ),
 
-                const SizedBox(height: 8),
+                  const SliverToBoxAdapter(
+                    child: Divider(height: 1, color: Color(0xFFE2E8F0)),
+                  ),
 
-                // Stats / Filter Info Chip Row
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "${filteredBookings.length} of $totalCount Bookings ($paidCount Paid)",
-                      style: const TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
-                        color: subText,
-                      ),
-                    ),
-                    if (widget.busId != null)
-                      InkWell(
-                        onTap: () => fetchBookings(specificBusId: null),
-                        borderRadius: BorderRadius.circular(6),
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                          child: Text(
-                            "Clear Bus Filter",
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w800,
-                              color: primaryBlue,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          const Divider(height: 1, color: Color(0xFFE2E8F0)),
-
-          // ─── 2. BOOKINGS LIST ───
-          Expanded(
-            child: RefreshIndicator(
-              color: primaryBlue,
-              onRefresh: () => fetchBookings(),
-              child: isLoading
-                  ? const Center(child: CircularProgressIndicator(color: primaryBlue))
-                  : filteredBookings.isEmpty
-                      ? ListView(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          children: [
-                            const SizedBox(height: 60),
-                            Center(
-                              child: Column(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(16),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      shape: BoxShape.circle,
-                                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                                    ),
-                                    child: const Icon(
-                                      Icons.confirmation_number_outlined,
-                                      size: 42,
-                                      color: Color(0xFF94A3B8),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    searchQuery.isNotEmpty
-                                        ? 'No bookings match "$searchQuery"'
-                                        : 'No passenger bookings found',
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700,
-                                      color: darkText,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  const Text(
-                                    'When passengers book seats, tickets will appear here',
-                                    style: TextStyle(fontSize: 12, color: subText),
-                                  ),
-                                ],
+                  // ─── 2. BOOKINGS LIST ITEMS (WITH DOTTED DIVIDERS) ───
+                  if (filteredBookings.isEmpty)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 60),
+                        child: Center(
+                          child: Column(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                                ),
+                                child: const Icon(
+                                  Icons.confirmation_number_outlined,
+                                  size: 42,
+                                  color: Color(0xFF94A3B8),
+                                ),
                               ),
-                            ),
-                          ],
-                        )
-                      : ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                          itemCount: filteredBookings.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 12),
-                          itemBuilder: (context, idx) => _buildBookingTicketCard(filteredBookings[idx]),
+                              const SizedBox(height: 12),
+                              Text(
+                                searchQuery.isNotEmpty
+                                    ? 'No bookings match "$searchQuery"'
+                                    : 'No passenger bookings found',
+                                style: const TextStyle(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: darkText,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              const Text(
+                                'When passengers book seats, tickets will appear here',
+                                style: TextStyle(fontSize: 12, color: subText),
+                              ),
+                            ],
+                          ),
                         ),
-            ),
-          ),
-        ],
+                      ),
+                    )
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final int itemIndex = index ~/ 2;
+                            if (index.isOdd) {
+                              return _buildDottedDivider();
+                            }
+                            return _buildBookingTicketCard(filteredBookings[itemIndex]);
+                          },
+                          childCount: filteredBookings.length * 2 - 1,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
       ),
     );
   }
 
-  // ─── MODERN BOOKING TICKET CARD ───
+  Widget _buildChannelFilterChip(String filterKey, String label, IconData icon) {
+    final bool isSelected = channelFilter == filterKey;
+    return InkWell(
+      onTap: () {
+        setState(() {
+          channelFilter = filterKey;
+          _applyFilters();
+        });
+      },
+      borderRadius: BorderRadius.circular(10),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: isSelected ? primaryBlue : const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? primaryBlue : const Color(0xFFE2E8F0),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 13,
+              color: isSelected ? Colors.white : subText,
+            ),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                color: isSelected ? Colors.white : darkText,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── COMPACT STREAMLINED BOOKING TICKET CARD ───
   Widget _buildBookingTicketCard(Map<String, dynamic> b) {
     final int bookingId = b['bookingId'] as int;
-    final String fName = b['firstName'] ?? '';
-    final String lName = b['lastName'] ?? '';
-    final String passengerName = "$fName $lName".trim().isNotEmpty
-        ? "$fName $lName".trim()
+    final String passengerName = (b['passengerName'] ?? '').toString().trim().isNotEmpty
+        ? (b['passengerName'] ?? '').toString().trim()
         : (b['userEmail'] ?? 'Guest Passenger');
 
     final dynamic seat = b['seatNumber'] ?? '';
-    final String gender = (b['gender'] ?? 'Male').toString();
-    final String busName = b['busName'] ?? 'Bus';
-    final String busNumber = b['busNumber'] ?? '';
-    final String busClass = b['busClass'] ?? 'Standard';
     final String fromCity = b['fromCity'] ?? '';
     final String toCity = b['toCity'] ?? '';
     final String time = b['time'] ?? '';
     final String busDate = b['busDate'] ?? b['bookingDate'] ?? '';
-    final String phone = b['userPhone'] ?? '';
-    final String cnic = b['userCnic'] ?? '';
     final double fare = (b['fare'] as num?)?.toDouble() ?? 0.0;
-    final Map<String, dynamic>? payment = b['payment'] as Map<String, dynamic>?;
-    final bool isPaid = payment != null;
-
-    final bool isMale = gender.toLowerCase().startsWith('m');
+    final bool isTerminal = b['isTerminal'] == true;
+    final String bookingTimestamp = _formatBookingDateTime(b);
 
     return Container(
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.025),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header: Passenger Info & Seat Badge ──
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
-            child: Row(
-              children: [
-                // Passenger Avatar
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: isMale ? const Color(0xFFEFF6FF) : const Color(0xFFFDF2F8),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isMale ? const Color(0xFFBFDBFE) : const Color(0xFFFBCFE8),
+          // ── 1. Top Row: Passenger Name, Channel Badge & Seat No (No Image Icon) ──
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      passengerName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w700,
+                        color: darkText,
+                      ),
                     ),
-                  ),
-                  child: Center(
-                    child: Icon(
-                      isMale ? Icons.person_rounded : Icons.person_2_rounded,
-                      color: isMale ? primaryBlue : const Color(0xFFDB2777),
-                      size: 20,
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                          decoration: BoxDecoration(
+                            color: isTerminal ? const Color(0xFFFFFBEB) : const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: isTerminal ? const Color(0xFFFDE68A) : const Color(0xFFBFDBFE),
+                            ),
+                          ),
+                          child: Text(
+                            isTerminal ? "POS Counter" : "Online App",
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w700,
+                              color: isTerminal ? const Color(0xFFB45309) : primaryBlue,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          "#$bookingId",
+                          style: const TextStyle(fontSize: 10.5, color: subText, fontWeight: FontWeight.w600),
+                        ),
+                      ],
                     ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                decoration: BoxDecoration(
+                  color: primaryBlue.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: primaryBlue.withValues(alpha: 0.2)),
+                ),
+                child: Text(
+                  "Seat $seat",
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: primaryBlue,
                   ),
                 ),
-                const SizedBox(width: 10),
-
-                // Name & ID
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        passengerName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          color: darkText,
-                        ),
-                      ),
-                      const SizedBox(height: 1),
-                      Text(
-                        "Ticket #$bookingId • ${gender.toUpperCase()}",
-                        style: const TextStyle(fontSize: 11, color: subText, fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Seat Number Pill
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: primaryBlue.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: primaryBlue.withValues(alpha: 0.2)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.event_seat_rounded, size: 13, color: primaryBlue),
-                      const SizedBox(width: 4),
-                      Text(
-                        "Seat $seat",
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
-                          color: primaryBlue,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
 
+          const SizedBox(height: 10),
           const Divider(height: 1, color: Color(0xFFF1F5F9)),
+          const SizedBox(height: 10),
 
-          // ── Middle: Route & Bus Details ──
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Route: From -> To
-                Row(
+          // ── 2. Route (From & To) + Fare ──
+          Row(
+            children: [
+              Expanded(
+                child: Row(
                   children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: primaryBlue,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
                     Text(
                       fromCity,
                       style: const TextStyle(
                         fontSize: 13.5,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
                         color: darkText,
                       ),
                     ),
@@ -685,165 +857,95 @@ class _ViewAllBookingScreenState extends State<ViewAllBookingScreen> {
                       padding: EdgeInsets.symmetric(horizontal: 6),
                       child: Icon(Icons.arrow_forward_rounded, size: 13, color: subText),
                     ),
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFEF4444),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
                     Text(
                       toCity,
                       style: const TextStyle(
                         fontSize: 13.5,
-                        fontWeight: FontWeight.w800,
-                        color: darkText,
-                      ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      fare > 0 ? "Rs. ${fare.toStringAsFixed(0)}" : "",
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                         color: darkText,
                       ),
                     ),
                   ],
                 ),
-
-                const SizedBox(height: 8),
-
-                // Bus schedule info & payment badge
-                Row(
-                  children: [
-                    const Icon(Icons.access_time_rounded, size: 13, color: subText),
-                    const SizedBox(width: 4),
-                    Text(
-                      "$time ($busDate)",
-                      style: const TextStyle(fontSize: 11.5, color: subText, fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        "$busName ${busNumber.isNotEmpty ? '• $busNumber' : ''} ($busClass)",
-                        style: const TextStyle(fontSize: 10.5, color: subText, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ],
+              ),
+              Text(
+                fare > 0 ? "Rs. ${fare.toStringAsFixed(0)}" : "Rs. 0",
+                style: const TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w800,
+                  color: primaryBlue,
                 ),
-
-                if (phone.isNotEmpty || cnic.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      if (phone.isNotEmpty) ...[
-                        const Icon(Icons.phone_outlined, size: 12, color: subText),
-                        const SizedBox(width: 3),
-                        Text(phone, style: const TextStyle(fontSize: 11, color: subText)),
-                      ],
-                      if (phone.isNotEmpty && cnic.isNotEmpty)
-                        const Text(" • ", style: TextStyle(color: subText, fontSize: 11)),
-                      if (cnic.isNotEmpty) ...[
-                        const Icon(Icons.badge_outlined, size: 12, color: subText),
-                        const SizedBox(width: 3),
-                        Text(cnic, style: const TextStyle(fontSize: 11, color: subText)),
-                      ],
-                    ],
-                  ),
-                ],
-              ],
-            ),
+              ),
+            ],
           ),
 
-          // ── Bottom Action Toolbar ──
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: const BoxDecoration(
-              color: Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
-            ),
-            child: Row(
-              children: [
-                // Payment Status Badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
-                  decoration: BoxDecoration(
-                    color: isPaid ? const Color(0xFFF0FDF4) : const Color(0xFFFFFBEB),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: isPaid ? const Color(0xFFDCFCE7) : const Color(0xFFFEF3C7),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        isPaid ? Icons.check_circle_rounded : Icons.pending_rounded,
-                        size: 12,
-                        color: isPaid ? const Color(0xFF16A34A) : const Color(0xFFD97706),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        isPaid ? (payment['paymentMethod'] ?? 'Paid') : 'Pending Pay',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: isPaid ? const Color(0xFF15803D) : const Color(0xFFB45309),
-                        ),
-                      ),
-                    ],
-                  ),
+          const SizedBox(height: 6),
+
+          // ── 3. Date & Time ──
+          Row(
+            children: [
+              const Icon(Icons.access_time_rounded, size: 13, color: subText),
+              const SizedBox(width: 4),
+              Text(
+                "$time • $busDate",
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w500,
+                  color: subText,
                 ),
+              ),
+            ],
+          ),
 
-                const Spacer(),
+          const SizedBox(height: 12),
 
-                // View Receipt Button (if paid)
-                if (isPaid) ...[
-                  InkWell(
-                    onTap: () => _showPaymentDetails(payment),
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4.5),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: const Text(
+          // ── 4. 3 Action Buttons (Receipt, Ticket, Cancel) ──
+          Row(
+            children: [
+              // Button 1: Receipt
+              Expanded(
+                child: InkWell(
+                  onTap: () => _showPaymentDetails(b),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: const Center(
+                      child: Text(
                         "Receipt",
                         style: TextStyle(
                           color: darkText,
                           fontSize: 11.5,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 6),
-                ],
+                ),
+              ),
+              const SizedBox(width: 8),
 
-                // View Ticket Button
-                InkWell(
+              // Button 2: Ticket
+              Expanded(
+                child: InkWell(
                   onTap: () {
                     final ticketData = {
                       'passenger': {
                         'name': passengerName,
-                        'cnic': cnic,
-                        'phone': phone,
+                        'cnic': b['passengerCnic'] ?? b['userCnic'] ?? '',
+                        'phone': b['passengerPhone'] ?? b['userPhone'] ?? '',
                       },
                       'seats': [seat.toString()],
                       'date': busDate,
-                      'paymentMethod': payment != null ? (payment['paymentMethod'] ?? '') : 'Counter',
+                      'travelDate': busDate,
+                      'bookingTimestamp': bookingTimestamp,
+                      'paymentMethod': b['payment'] != null ? (b['payment']['paymentMethod'] ?? '') : (isTerminal ? 'POS Counter' : 'Online'),
                       'bus': {
-                        'busNumber': busNumber,
+                        'busNumber': b['busNumber'] ?? '',
                         'fromCity': fromCity,
                         'toCity': toCity,
                         'time': time,
@@ -857,48 +959,53 @@ class _ViewAllBookingScreenState extends State<ViewAllBookingScreen> {
                   },
                   borderRadius: BorderRadius.circular(8),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4.5),
+                    padding: const EdgeInsets.symmetric(vertical: 6),
                     decoration: BoxDecoration(
                       color: const Color(0xFFEFF6FF),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: const Color(0xFFDBEAFE)),
                     ),
-                    child: const Text(
-                      "Ticket",
-                      style: TextStyle(
-                        color: primaryBlue,
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
+                    child: const Center(
+                      child: Text(
+                        "Ticket",
+                        style: TextStyle(
+                          color: primaryBlue,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),
                 ),
+              ),
+              const SizedBox(width: 8),
 
-                const SizedBox(width: 6),
-
-                // Cancel / Delete Button
-                InkWell(
+              // Button 3: Cancel
+              Expanded(
+                child: InkWell(
                   onTap: () => _deleteBooking(b),
                   borderRadius: BorderRadius.circular(8),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4.5),
+                    padding: const EdgeInsets.symmetric(vertical: 6),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFEF2F2),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: const Color(0xFFFEE2E2)),
                     ),
-                    child: const Text(
-                      "Cancel",
-                      style: TextStyle(
-                        color: Color(0xFFEF4444),
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
+                    child: const Center(
+                      child: Text(
+                        "Cancel",
+                        style: TextStyle(
+                          color: Color(0xFFEF4444),
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ],
       ),

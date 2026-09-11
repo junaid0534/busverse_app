@@ -279,15 +279,15 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProv
         elevation: 0.5,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: darkText, size: 20),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: darkText, size: 18),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           "My Bookings & Tickets",
           style: TextStyle(
             color: darkText,
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
           ),
         ),
         bottom: PreferredSize(
@@ -308,8 +308,8 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProv
               indicatorSize: TabBarIndicatorSize.tab,
               labelColor: Colors.white,
               unselectedLabelColor: subText,
-              labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-              unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              labelStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+              unselectedLabelStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500),
               dividerColor: Colors.transparent,
               tabs: [
                 Tab(text: "Upcoming (${activeTickets.length})"),
@@ -439,11 +439,11 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProv
                       children: [
                         Text(
                           busName,
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: darkText),
+                          style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: darkText),
                         ),
                         Text(
                           "Ref: $bookingRef",
-                          style: const TextStyle(fontSize: 10, color: subText, fontWeight: FontWeight.w600),
+                          style: const TextStyle(fontSize: 10, color: subText, fontWeight: FontWeight.w500),
                         ),
                       ],
                     ),
@@ -466,8 +466,8 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProv
                       Text(
                         isActive ? "CONFIRMED" : "COMPLETED",
                         style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w600,
                           color: isActive ? const Color(0xFF16A34A) : subText,
                         ),
                       ),
@@ -491,13 +491,13 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProv
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text("FROM", style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: subText)),
+                          const Text("FROM", style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w500, color: subText)),
                           const SizedBox(height: 2),
                           Text(
                             fromCity,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: darkText),
+                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: darkText),
                           ),
                         ],
                       ),
@@ -509,15 +509,15 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProv
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.trip_origin_rounded, size: 10, color: primaryBlue),
+                            Icon(Icons.trip_origin_rounded, size: 9, color: primaryBlue),
                             Expanded(
                               child: Divider(color: Color(0xFFCBD5E1), thickness: 1.2),
                             ),
-                            Icon(Icons.directions_bus_rounded, size: 15, color: primaryBlue),
+                            Icon(Icons.directions_bus_rounded, size: 14, color: primaryBlue),
                             Expanded(
                               child: Divider(color: Color(0xFFCBD5E1), thickness: 1.2),
                             ),
-                            Icon(Icons.location_on_rounded, size: 12, color: primaryBlue),
+                            Icon(Icons.location_on_rounded, size: 11, color: primaryBlue),
                           ],
                         ),
                       ),
@@ -527,14 +527,14 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProv
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          const Text("TO", style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: subText)),
+                          const Text("TO", style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w500, color: subText)),
                           const SizedBox(height: 2),
                           Text(
                             toCity,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             textAlign: TextAlign.end,
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: darkText),
+                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: darkText),
                           ),
                         ],
                       ),
@@ -619,13 +619,13 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProv
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text("TOTAL FARE", style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: subText)),
+                      const Text("TOTAL FARE", style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w500, color: subText)),
                       FittedBox(
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerLeft,
                         child: Text(
                           "PKR ${fare.toStringAsFixed(0)}",
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: primaryBlue),
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: primaryBlue),
                         ),
                       ),
                     ],
@@ -676,7 +676,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProv
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                       ),
                       icon: const Icon(Icons.qr_code_2_rounded, size: 15),
-                      label: const Text("E-Ticket", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                      label: const Text("E-Ticket", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                     ),
 
                     if (isActive && (bookingId > 0 || (t['busId'] != null))) ...[
@@ -689,7 +689,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProv
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                         ),
-                        child: const Text("Cancel", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                        child: const Text("Cancel", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                       ),
                     ],
                   ],
@@ -706,14 +706,14 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProv
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: subText)),
+        Text(label, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w500, color: subText)),
         const SizedBox(height: 2),
         FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerLeft,
           child: Text(
             value,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: darkText),
+            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: darkText),
           ),
         ),
       ],
@@ -730,31 +730,32 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProv
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 24),
+            Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 22),
             SizedBox(width: 8),
-            Text("Cancel Booking?", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            Text("Cancel Booking?", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
           ],
         ),
         content: Text(
           "Are you sure you want to cancel your ticket for $fromCity → $toCity? 100% refund will be credited back to your wallet.",
-          style: const TextStyle(fontSize: 13, color: subText),
+          style: const TextStyle(fontSize: 12, color: subText),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text("No, Keep Ticket", style: TextStyle(color: subText, fontWeight: FontWeight.w600)),
+            child: const Text("No, Keep Ticket", style: TextStyle(color: subText, fontSize: 12.5, fontWeight: FontWeight.w500)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.redAccent,
               foregroundColor: Colors.white,
+              elevation: 0,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             onPressed: () {
               Navigator.pop(ctx);
               _cancelTicket(ticket);
             },
-            child: const Text("Yes, Cancel Ticket"),
+            child: const Text("Yes, Cancel Ticket", style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -779,18 +780,18 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProv
                 color: primaryBlue.withOpacity(0.08),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.confirmation_number_outlined, size: 54, color: primaryBlue),
+              child: const Icon(Icons.confirmation_number_outlined, size: 48, color: primaryBlue),
             ),
             const SizedBox(height: 16),
             Text(
               title,
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: darkText),
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: darkText),
             ),
             const SizedBox(height: 6),
             Text(
               subtitle,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 12.5, color: subText),
+              style: const TextStyle(fontSize: 12, color: subText),
             ),
             if (showBookButton) ...[
               const SizedBox(height: 20),
@@ -803,7 +804,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProv
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 ),
                 icon: const Icon(Icons.directions_bus_rounded, size: 18),
-                label: const Text("Book Bus Ticket", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                label: const Text("Book Bus Ticket", style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
               ),
             ],
           ],

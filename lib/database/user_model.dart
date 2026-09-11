@@ -11,6 +11,10 @@ class UserModel {
   String? city;
   String? region;
   String? zip;
+  String role; // 'user', 'sub_admin', 'super_admin'
+  String? terminalName; // e.g. "Kalma Chowk Terminal"
+  String? terminalCity; // e.g. "Lahore"
+  String status; // 'active', 'suspended'
 
   UserModel({
     this.id,
@@ -25,6 +29,10 @@ class UserModel {
     this.city,
     this.region,
     this.zip,
+    this.role = 'user',
+    this.terminalName,
+    this.terminalCity,
+    this.status = 'active',
   });
 
   // Convert object -> Map (for database)
@@ -42,6 +50,10 @@ class UserModel {
       "city": city?.trim(),
       "region": region?.trim(),
       "zip": zip?.trim(),
+      "role": role,
+      "terminalName": terminalName?.trim(),
+      "terminalCity": terminalCity?.trim(),
+      "status": status,
     };
   }
 
@@ -60,6 +72,10 @@ class UserModel {
       city: map["city"],
       region: map["region"],
       zip: map["zip"],
+      role: map["role"] ?? "user",
+      terminalName: map["terminalName"],
+      terminalCity: map["terminalCity"],
+      status: map["status"] ?? "active",
     );
   }
 }

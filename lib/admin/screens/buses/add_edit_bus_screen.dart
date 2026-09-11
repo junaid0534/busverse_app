@@ -250,29 +250,26 @@ class _AddEditBusScreenState extends State<AddEditBusScreen> {
       createdAt: widget.bus?.createdAt ?? DateTime.now().toIso8601String(),
     );
 
-    // 1. Save / Update to Supabase (Cloud)
+    // 1. Save / Update to Local SQLite
     try {
       if (widget.bus == null) {
-        final supabaseId = await SupabaseService.instance.insertBus(bus);
-        if (supabaseId != null) {
-          bus.id = supabaseId;
-        }
+        await DBHelper.instance.insertBus(bus);
+      } else {
+        await DBHelper.instance.updateBus(widget.bus!.id!, bus);
+      }
+    } catch (e) {
+      debugPrint("SQLite bus save exception: $e");
+    }
+
+    // 2. Save / Update to Supabase (Cloud)
+    try {
+      if (widget.bus == null) {
+        await SupabaseService.instance.insertBus(bus);
       } else {
         await SupabaseService.instance.updateBus(bus);
       }
     } catch (e) {
       debugPrint("Supabase bus save exception: $e");
-    }
-
-    // 2. Save / Update to Local SQLite
-    try {
-      if (widget.bus == null) {
-        await DBHelper.instance.insertBus(bus);
-      } else {
-        await DBHelper.instance.updateBus(bus.id!, bus);
-      }
-    } catch (e) {
-      debugPrint("SQLite bus save exception: $e");
     }
 
     if (!mounted) return;
