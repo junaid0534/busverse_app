@@ -94,6 +94,8 @@ class AuthService {
       return credential;
     } on FirebaseAuthException catch (e) {
       throw e.message ?? 'Login failed. Please check your credentials.';
+    } catch (e) {
+      throw 'Login failed. Please check your credentials.';
     }
   }
 

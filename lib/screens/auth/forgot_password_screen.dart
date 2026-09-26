@@ -1,6 +1,4 @@
-import 'package:bus_ticket_system/screens/reset_password_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:bus_ticket_system/database/db_helper.dart';
 import 'package:bus_ticket_system/services/auth_service.dart';
 
 class ForgotPasswordScreen extends StatelessWidget {

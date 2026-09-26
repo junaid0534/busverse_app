@@ -1,10 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:bus_ticket_system/admin/models/bus_model.dart';
 import 'package:bus_ticket_system/database/db_helper.dart';
-import 'package:bus_ticket_system/services/supabase_service.dart';
 import 'package:bus_ticket_system/services/notification_service.dart';
 import 'view_ticket_screen.dart';
 import 'passenger_detail_screen.dart';
@@ -1395,7 +1393,6 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
     final String email = emailController.text.trim().isNotEmpty
         ? emailController.text.trim()
         : (widget.passengerData["email"] ?? "");
-    final String seatsStr = widget.selectedSeats.join(",");
     final int userId = (widget.passengerData["userId"] is int) ? widget.passengerData["userId"] : 0;
     final Map<int, String> genderMap = (widget.passengerData["genderMap"] is Map)
         ? Map<int, String>.from(widget.passengerData["genderMap"])
@@ -1409,66 +1406,27 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
     await Future.delayed(const Duration(milliseconds: 900));
     if (mounted) setState(() => _processingStep = 2);
 
-    // 1. Insert Payment in Supabase
-    try {
-      await SupabaseService.instance.insertPayment(
-        busId: widget.bus.id ?? 0,
-        seats: seatsStr,
-        amount: totalAmount,
-        date: widget.date,
-        passengerName: passengerName,
-        passengerCnic: passengerCnic,
-        passengerPhone: passengerPhone,
-        paymentMethod: selectedPayment,
-        accountNumber: accountController.text.trim().isNotEmpty
-            ? accountController.text.trim()
-            : (cardNumberController.text.isNotEmpty ? "CARD-****" : "WALLET"),
-        email: email,
-      );
-    } catch (e) {
-      print("Supabase payment exception: $e");
-    }
-
-    // 2. Reserve / Block Seats in Supabase Bookings Table
-    try {
-      final currentUid = FirebaseAuth.instance.currentUser?.uid ?? "guest_user";
-      final Map<int, String> seatGenders = {};
-      for (var s in widget.selectedSeats) {
-        seatGenders[s] = genderMap[s] ?? primaryGender;
-      }
-      await SupabaseService.instance.createBooking(
-        firebaseUid: currentUid,
-        userEmail: email.isNotEmpty ? email : "guest@busverse.com",
-        busId: widget.bus.id ?? 0,
-        seatNumbers: widget.selectedSeats,
-        seatGenders: seatGenders,
-        bookingDate: widget.date,
-      );
-    } catch (e) {
-      print("Supabase booking exception: $e");
-    }
-
-    // 3. Insert Payment in SQLite Payments Table
+    // 1. Insert Payment in Cloud Database
     try {
       await DBHelper.instance.insertPayment(
         busId: widget.bus.id ?? 0,
         seats: widget.selectedSeats,
         passengerName: passengerName,
-        passengerEmail: email,
+        passengerEmail: email.isNotEmpty ? email : "guest@busverse.com",
         paymentMethod: selectedPayment,
         accountNumber: accountController.text.trim().isNotEmpty
             ? accountController.text.trim()
-            : "ONLINE",
+            : (cardNumberController.text.isNotEmpty ? "CARD-****" : "WALLET"),
         date: widget.date,
         amount: totalAmount,
         passengerCnic: passengerCnic,
         passengerPhone: passengerPhone,
       );
     } catch (e) {
-      print("SQLite payment exception: $e");
+      debugPrint("Payment exception: $e");
     }
 
-    // 4. Reserve / Block Seats in SQLite Bookings Table
+    // 2. Reserve / Block Seats in Cloud Database
     try {
       await DBHelper.instance.bookSeats(
         busId: widget.bus.id ?? 0,
@@ -1476,9 +1434,10 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
         gender: primaryGender,
         date: widget.date,
         userId: userId,
+        userEmail: email.isNotEmpty ? email : "guest@busverse.com",
       );
     } catch (e) {
-      print("SQLite bookSeats exception: $e");
+      debugPrint("bookSeats exception: $e");
     }
 
     if (mounted) setState(() => _processingStep = 3);

@@ -3,6 +3,7 @@ import 'package:bus_ticket_system/database/db_helper.dart';
 import 'package:bus_ticket_system/services/supabase_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:bus_ticket_system/services/notification_service.dart';
+import 'package:bus_ticket_system/user/screens/live_bus_tracking_screen.dart';
 import 'view_ticket_screen.dart';
 
 class MyTicketsScreen extends StatefulWidget {
@@ -49,47 +50,68 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProv
     // Fetch User Profile for Fallbacks
     Map<String, dynamic>? userProfile;
     try {
-      if (widget.userId > 0) {
-        userProfile = await DBHelper.instance.getUserById(widget.userId);
-      } else if (widget.userEmail.isNotEmpty) {
-        final u = await DBHelper.instance.getUserByEmail(widget.userEmail);
+      final currentUid = FirebaseAuth.instance.currentUser?.uid;
+      if (currentUid != null && currentUid.isNotEmpty) {
+        userProfile = await SupabaseService.instance.getUserProfile(currentUid);
+      }
+      final currentEmail = widget.userEmail.isNotEmpty
+          ? widget.userEmail
+          : (FirebaseAuth.instance.currentUser?.email ?? '');
+      if (userProfile == null && currentEmail.isNotEmpty) {
+        final u = await DBHelper.instance.getUserByEmail(currentEmail);
         if (u is Map<String, dynamic>) {
           userProfile = u;
         }
+      }
+      if (userProfile == null && widget.userId > 0) {
+        userProfile = await DBHelper.instance.getUserById(widget.userId);
       }
     } catch (e) {
       print("Error loading user profile in MyTickets: $e");
     }
 
     final String defaultUserName = userProfile != null
-        ? "${userProfile['firstName'] ?? ''} ${userProfile['lastName'] ?? ''}".trim()
-        : "Valued Customer";
-    final String defaultUserPhone = userProfile?['phone'] ?? "";
-    final String defaultUserCnic = userProfile?['cnic'] ?? "";
+        ? "${userProfile['firstName'] ?? userProfile['first_name'] ?? ''} ${userProfile['lastName'] ?? userProfile['last_name'] ?? ''}".trim()
+        : (FirebaseAuth.instance.currentUser?.displayName ?? "Valued Customer");
+    final String defaultUserPhone = userProfile?['phone'] ?? userProfile?['user_phone'] ?? "";
+    final String defaultUserCnic = userProfile?['cnic'] ?? userProfile?['user_cnic'] ?? "";
 
-    // 1. Fetch from local SQLite Bookings (Primary Single Source of Truth)
+    // 1. Fetch from Supabase Bookings
     try {
-      final localBookings = await DBHelper.instance.getUserBookings(widget.userId);
+      final queryKey = widget.userEmail.isNotEmpty
+          ? widget.userEmail
+          : (FirebaseAuth.instance.currentUser?.uid ?? widget.userId);
+      final localBookings = await DBHelper.instance.getUserBookings(queryKey);
       for (var b in localBookings) {
         combined.add({
           ...b,
           'source': 'booking',
-          'passengerName': defaultUserName.isNotEmpty ? defaultUserName : "Valued Customer",
-          'passengerPhone': defaultUserPhone,
-          'passengerCnic': defaultUserCnic,
-          'paymentMethod': "Paid Online",
+          'passengerName': (b['passengerName'] != null && b['passengerName'].toString().trim().isNotEmpty)
+              ? b['passengerName']
+              : (defaultUserName.isNotEmpty ? defaultUserName : "Valued Customer"),
+          'passengerPhone': (b['passengerPhone'] != null && b['passengerPhone'].toString().trim().isNotEmpty)
+              ? b['passengerPhone']
+              : defaultUserPhone,
+          'passengerCnic': (b['passengerCnic'] != null && b['passengerCnic'].toString().trim().isNotEmpty)
+              ? b['passengerCnic']
+              : defaultUserCnic,
+          'paymentMethod': b['paymentMethod'] ?? "Paid Online",
         });
       }
     } catch (e) {
-      print("Error loading SQLite bookings: $e");
+      print("Error loading Supabase bookings: $e");
     }
 
     // 2. Fallback to Payments table ONLY IF no bookings found in bookings table
     if (combined.isEmpty) {
       try {
         final payments = await DBHelper.instance.getPayments();
+        final filterEmail = widget.userEmail.isNotEmpty
+            ? widget.userEmail.toLowerCase()
+            : (FirebaseAuth.instance.currentUser?.email?.toLowerCase() ?? '');
         for (var p in payments) {
-          if (p['email'] == widget.userEmail || widget.userEmail.isEmpty || widget.userId == 0) {
+          final pEmail = (p['email'] ?? p['passengerEmail'] ?? '').toString().toLowerCase();
+          if (pEmail == filterEmail || filterEmail.isEmpty || widget.userId == 0) {
             Map<String, dynamic>? bus;
             if (p['busId'] != null && p['busId'] is int) {
               bus = await DBHelper.instance.getBusById(p['busId'] as int);
@@ -103,15 +125,15 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProv
               'passengerGender': "M",
               'bookingDate': p['date'] ?? "",
               'status': 'booked',
-              'busName': bus?['busName'] ?? "Junaid Movers",
-              'fromCity': bus?['fromCity'] ?? "Multan",
-              'toCity': bus?['toCity'] ?? "Lahore",
+              'busName': bus?['busName'] ?? bus?['bus_name'] ?? "BusVerse Express",
+              'fromCity': bus?['fromCity'] ?? bus?['from_city'] ?? "Multan",
+              'toCity': bus?['toCity'] ?? bus?['to_city'] ?? "Lahore",
               'travelDate': (bus?['date'] != null && bus!['date'].toString().trim().isNotEmpty)
                   ? bus['date'].toString().trim()
                   : (p['date'] ?? ""),
               'time': bus?['time'] ?? "Scheduled",
-              'busClass': bus?['busClass'] ?? "Executive",
-              'busNumber': bus?['busNumber'] ?? "JND-101",
+              'busClass': bus?['busClass'] ?? bus?['bus_class'] ?? "Executive",
+              'busNumber': bus?['busNumber'] ?? bus?['bus_number'] ?? "BV-Fleet",
               'fare': (p['amount'] != null && (p['amount'] as num) > 0)
                   ? (p['amount'] as num).toDouble()
                   : ((bus?['fare'] is num) ? (bus?['fare'] as num).toDouble() : 0.0),
@@ -130,41 +152,6 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProv
         }
       } catch (e) {
         print("Error loading payments fallback: $e");
-      }
-    }
-
-    // 3. Cloud Supabase Sync (if user is logged in with Firebase)
-    if (combined.isEmpty) {
-      try {
-        final currentUid = FirebaseAuth.instance.currentUser?.uid;
-        if (currentUid != null) {
-          final cloudBookings = await SupabaseService.instance.getUserBookings(currentUid);
-          for (var cb in cloudBookings) {
-            final bus = cb['buses'] ?? {};
-            combined.add({
-              'source': 'cloud',
-              'bookingId': cb['id'],
-              'seatNumber': cb['seat_number']?.toString() ?? "N/A",
-              'passengerGender': cb['gender'] ?? "M",
-              'bookingDate': cb['booking_date'] ?? "",
-              'status': cb['status'] ?? 'booked',
-              'busName': bus['busName'] ?? "Junaid Movers",
-              'fromCity': bus['fromCity'] ?? "Multan",
-              'toCity': bus['toCity'] ?? "Lahore",
-              'travelDate': bus['date'] ?? cb['booking_date'] ?? "",
-              'time': bus['time'] ?? "Scheduled",
-              'busClass': bus['busClass'] ?? "Executive",
-              'busNumber': bus['busNumber'] ?? "JND-101",
-              'fare': (bus['fare'] is num) ? (bus['fare'] as num).toDouble() : 0.0,
-              'passengerName': defaultUserName,
-              'passengerPhone': defaultUserPhone,
-              'passengerCnic': defaultUserCnic,
-              'paymentMethod': "Paid Online",
-            });
-          }
-        }
-      } catch (e) {
-        print("Error loading cloud bookings: $e");
       }
     }
 
@@ -219,7 +206,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProv
     try {
       final currentUid = FirebaseAuth.instance.currentUser?.uid;
       if (currentUid != null) {
-        await SupabaseService.instance.cancelBooking(bId.toString());
+        await SupabaseService.instance.cancelBooking(bookingId: bId);
       }
     } catch (_) {}
 
@@ -635,6 +622,30 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProv
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Live GPS Track Button for Upcoming Active Tickets
+                    if (isActive) ...[
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => LiveBusTrackingScreen(ticketData: t),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF10B981),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
+                        ),
+                        icon: const Icon(Icons.gps_fixed_rounded, size: 14),
+                        label: const Text("Track Bus", style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+
                     // View Digital E-Ticket Button
                     ElevatedButton.icon(
                       onPressed: () {

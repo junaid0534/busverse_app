@@ -16,11 +16,6 @@ dependencies:
   # STATE MANAGEMENT
   provider: ^6.1.2
 
-  # SQLITE (WINDOWS + LINUX + ANDROID)
-  sqflite: ^2.3.3
-  sqflite_common_ffi: ^2.3.2+1
-  path: ^1.9.0
-
   # UI & FONTS
   google_fonts: ^6.3.0
   animated_text_kit: ^4.2.2
@@ -40,6 +35,11 @@ dependencies:
   firebase_auth: ^5.5.1
   firebase_messaging: ^15.2.4
   flutter_local_notifications: ^17.2.4
+
+  # MAPS & GPS
+  flutter_map: ^7.0.2
+  flutter_map_cancellable_tile_provider: ^3.0.2
+  latlong2: ^0.9.1
 
   # PATH PROVIDER
   path_provider: ^2.1.5

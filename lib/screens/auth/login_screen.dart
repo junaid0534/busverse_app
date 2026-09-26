@@ -371,7 +371,32 @@ class _LoginScreenState extends State<LoginScreen> {
         final role = (localUser['role'] ?? 'user').toString().toLowerCase();
         final status = (localUser['status'] ?? 'active').toString().toLowerCase();
 
-        if (role == 'sub_admin') {
+        if (role == 'driver') {
+          if (status == 'suspended') {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Your Driver account is currently suspended. Please contact Admin."),
+                backgroundColor: Colors.orange,
+              ),
+            );
+            return;
+          }
+
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Welcome Captain ${localUser['firstName']}!"),
+              backgroundColor: const Color(0xFF10B981),
+            ),
+          );
+          Navigator.pushReplacementNamed(
+            context,
+            '/driver_dashboard',
+            arguments: localUser,
+          );
+          return;
+        } else if (role == 'sub_admin') {
           if (status == 'suspended') {
             if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
@@ -501,7 +526,7 @@ class _LoginScreenState extends State<LoginScreen> {
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text("Login Successful! (Offline)"),
+              content: Text("Login Successful!"),
               backgroundColor: Colors.green,
             ),
           );
@@ -512,9 +537,13 @@ class _LoginScreenState extends State<LoginScreen> {
           );
         }
       } else {
+        String msg = e.toString();
+        if (msg.contains("FirebaseException") || msg.contains("JavaScriptObject") || msg.contains("user-not-found") || msg.contains("invalid-credential") || msg.contains("wrong-password")) {
+          msg = "Invalid email or password. Please check credentials.";
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString()),
+            content: Text(msg),
             backgroundColor: Colors.red,
           ),
         );

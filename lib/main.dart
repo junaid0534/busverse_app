@@ -18,6 +18,7 @@ import 'package:bus_ticket_system/user/screens/passenger_detail_screen.dart';
 import 'package:bus_ticket_system/user/screens/payment_screen.dart';
 import 'package:bus_ticket_system/user/screens/view_ticket_screen.dart';
 import 'package:bus_ticket_system/user/screens/my_tickets_screen.dart';
+import 'package:bus_ticket_system/user/screens/live_bus_tracking_screen.dart';
 import 'package:bus_ticket_system/user/screens/notifications_screen.dart';
 import 'package:bus_ticket_system/user/screens/no_bus_found_screen.dart';
 import 'package:bus_ticket_system/user/screens/cargo_tracking_screen.dart';
@@ -42,12 +43,16 @@ import 'package:bus_ticket_system/admin/screens/all_users_screen.dart';
 import 'package:bus_ticket_system/admin/screens/routes/manage_routes_screen.dart';
 import 'package:bus_ticket_system/admin/screens/routes/add_edit_route_screen.dart';
 import 'package:bus_ticket_system/admin/screens/bookings/view_all_booking_screen.dart';
+import 'package:bus_ticket_system/admin/screens/fleet/live_fleet_radar_screen.dart';
 
 // NEW ADMIN SCREENS
 import 'package:bus_ticket_system/admin/screens/admin_feedback_screen.dart';
 import 'package:bus_ticket_system/admin/screens/admin_complains_screen.dart';
-import 'package:bus_ticket_system/admin/screens/sub_admins/manage_sub_admins_screen.dart';
+import 'package:bus_ticket_system/admin/screens/terminals/manage_terminals_screen.dart';
 import 'package:bus_ticket_system/admin/screens/sub_admins/add_edit_sub_admin_screen.dart';
+import 'package:bus_ticket_system/admin/screens/drivers/manage_drivers_screen.dart';
+import 'package:bus_ticket_system/admin/screens/drivers/add_edit_driver_screen.dart';
+import 'package:bus_ticket_system/driver/screens/driver_dashboard_screen.dart';
 import 'package:bus_ticket_system/sub_admin/screens/sub_admin_dashboard_screen.dart';
 import 'package:bus_ticket_system/sub_admin/screens/counter_ticket_booking_screen.dart';
 import 'package:bus_ticket_system/sub_admin/screens/counter_search_bus_screen.dart';
@@ -55,20 +60,16 @@ import 'package:bus_ticket_system/sub_admin/screens/counter_search_bus_screen.da
 // BACKEND CONFIG & SERVICES
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:bus_ticket_system/config/backend_config.dart';
+import 'package:bus_ticket_system/firebase_options.dart';
 import 'package:bus_ticket_system/services/notification_service.dart';
 
-// DB FFI for desktop
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Initialize SQLite Desktop FFI
-  if (Platform.isWindows || Platform.isLinux) {
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
-  }
 
   // Initialize Supabase
   try {
@@ -81,13 +82,15 @@ void main() async {
     print('Supabase initialization error: $e');
   }
 
-  // Initialize Firebase (on Android / iOS)
+  // Initialize Firebase (All platforms: Web, Android, iOS, Windows)
   try {
-    if (Platform.isAndroid || Platform.isIOS) {
-      await Firebase.initializeApp();
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
       await NotificationService.instance.initialize();
-      print('Firebase initialized successfully');
     }
+    print('Firebase initialized successfully');
   } catch (e) {
     print('Firebase initialization error: $e');
   }
@@ -123,66 +126,76 @@ class MyApp extends StatelessWidget {
         '/search_bus': (context) => const SearchBusScreen(),
         '/cargo_tracking': (context) => const CargoTrackingScreen(),
         '/available_buses': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map;
+          final args = (ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?) ?? {};
           return AvailableBusesUserScreen(
-            buses: args['buses'],
-            selectedDate: args['selectedDate'],
-            userId: args['userId'],
+            buses: args['buses'] ?? [],
+            selectedDate: args['selectedDate'] ?? '',
+            userId: args['userId'] ?? 0,
           );
         },
         '/no_bus_found': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map;
+          final args = (ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?) ?? {};
           return NoBusFoundScreen(
-            fromCity: args['fromCity'],
-            toCity: args['toCity'],
-            selectedDate: args['selectedDate'],
+            fromCity: args['fromCity'] ?? '',
+            toCity: args['toCity'] ?? '',
+            selectedDate: args['selectedDate'] ?? '',
             busClass: args['busClass'] ?? 'All Types',
-            userId: args['userId'] ?? 1,
+            userId: args['userId'] ?? 0,
           );
         },
         '/book_seat': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map;
+          final args = (ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?) ?? {};
           return BookSeatScreen(
-            bus: args['bus'],
-            selectedDate: args['selectedDate'],
-            userId: args['userId'],
+            bus: args['bus'] ?? {},
+            selectedDate: args['selectedDate'] ?? '',
+            userId: args['userId'] ?? 0,
           );
         },
         '/passenger_details': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map;
+          final args = (ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?) ?? {};
+          final seats = args['selectedSeats'];
+          final List<int> seatList = (seats is List)
+              ? seats.map((e) => int.tryParse(e.toString()) ?? 0).toList()
+              : [];
           return PassengerDetailScreen(
-            bus: args['bus'],
-            selectedSeats: List<int>.from(args['selectedSeats']),
-            date: args['date'],
+            bus: args['bus'] ?? {},
+            selectedSeats: seatList,
+            date: args['date'] ?? '',
             genderMap: args['genderMap'] != null ? Map<int, String>.from(args['genderMap']) : null,
-            userId: args['userId'],
+            userId: args['userId'] ?? 0,
           );
         },
         '/payment': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map;
+          final args = (ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?) ?? {};
+          final seats = args['selectedSeats'];
+          final List<int> seatList = (seats is List)
+              ? seats.map((e) => int.tryParse(e.toString()) ?? 0).toList()
+              : [];
           return PaymentScreen(
-            bus: args['bus'],
-            selectedSeats: List<int>.from(args['selectedSeats']),
-            date: args['date'],
-            passengerData: args['passengerData'],
+            bus: args['bus'] ?? {},
+            selectedSeats: seatList,
+            date: args['date'] ?? '',
+            passengerData: args['passengerData'] ?? {},
           );
         },
         '/view_ticket': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map;
-          return ViewTicketScreen(ticketData: args['ticketData']);
+          final args = (ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?) ?? {};
+          return ViewTicketScreen(ticketData: args['ticketData'] ?? {});
         },
         '/my_tickets': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map;
+          final args = (ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?) ?? {};
+          final authUser = FirebaseAuth.instance.currentUser;
           return MyTicketsScreen(
-            userId: args['userId'],
-            userEmail: args['userEmail'],
+            userId: args['userId'] ?? 0,
+            userEmail: args['userEmail'] ?? authUser?.email ?? '',
           );
         },
         '/notifications': (context) {
-          final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>? ?? {};
+          final args = (ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?) ?? {};
+          final authUser = FirebaseAuth.instance.currentUser;
           return NotificationsScreen(
-            userId: args['userId'] ?? 1,
-            userEmail: args['userEmail'] ?? '',
+            userId: args['userId'] ?? 0,
+            userEmail: args['userEmail'] ?? authUser?.email ?? '',
           );
         },
 
@@ -192,31 +205,33 @@ class MyApp extends StatelessWidget {
 
         // ================= SUPPORT, COMPLAINTS & FEEDBACK =================
         '/support': (context) {
-          final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>? ?? {};
+          final args = (ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?) ?? {};
           return SupportScreen(userId: args['userId'] ?? 0);
         },
         '/complain': (context) {
-          final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>? ?? {};
+          final args = (ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?) ?? {};
           return ComplainScreen(userId: args['userId'] ?? 0);
         },
         '/feedback': (context) {
-          final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>? ?? {};
+          final args = (ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?) ?? {};
           return FeedbackScreen(userId: args['userId'] ?? 0);
         },
 
         // ================= ACCOUNT SCREENS =================
         '/my_account': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map;
+          final args = (ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?) ?? {};
+          final authUser = FirebaseAuth.instance.currentUser;
           return MyAccountScreen(
-            userId: args['userId'],
-            userEmail: args['userEmail'],
+            userId: args['userId'] ?? 0,
+            userEmail: args['userEmail'] ?? authUser?.email ?? '',
           );
         },
         '/edit_basic_info': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map;
+          final args = (ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?) ?? {};
+          final authUser = FirebaseAuth.instance.currentUser;
           return EditBasicInfoScreen(
-            userId: args['userId'],
-            userEmail: args['userEmail'],
+            userId: args['userId'] ?? 0,
+            userEmail: args['userEmail'] ?? authUser?.email ?? '',
           );
         },
 
@@ -241,7 +256,8 @@ class MyApp extends StatelessWidget {
         // NEW ADMIN ROUTES
         '/admin_feedbacks': (context) => const AdminFeedbackScreen(),
         '/admin_complains': (context) => const AdminComplainsScreen(),
-        '/manage_sub_admins': (context) => const ManageSubAdminsScreen(),
+        '/manage_terminals': (context) => const ManageTerminalsScreen(),
+        '/manage_sub_admins': (context) => const ManageTerminalsScreen(),
         '/add_edit_sub_admin': (context) {
           final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
           return AddEditSubAdminScreen(existing: args);
@@ -257,6 +273,24 @@ class MyApp extends StatelessWidget {
         '/counter_search_bus': (context) {
           final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
           return CounterSearchBusScreen(userProfile: args);
+        },
+
+        // LIVE GPS & FLEET RADAR
+        '/live_bus_tracking': (context) {
+          final args = (ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?) ?? {};
+          return LiveBusTrackingScreen(ticketData: args);
+        },
+        '/live_fleet_radar': (context) => const LiveFleetRadarScreen(),
+
+        // DRIVER MANAGEMENT & COCKPIT
+        '/manage_drivers': (context) => const ManageDriversScreen(),
+        '/add_edit_driver': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+          return AddEditDriverScreen(existingDriver: args);
+        },
+        '/driver_dashboard': (context) {
+          final args = (ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?) ?? {};
+          return DriverDashboardScreen(driverProfile: args);
         },
       },
       onUnknownRoute: (settings) {

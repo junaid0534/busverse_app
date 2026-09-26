@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'login_screen.dart';
-import 'otp_verification_screen.dart';
 import 'email_verification_sent_screen.dart';
-import 'package:bus_ticket_system/database/db_helper.dart';
-import 'package:bus_ticket_system/database/user_model.dart';
 import 'package:bus_ticket_system/services/auth_service.dart';
 
 class SignupScreen extends StatefulWidget {

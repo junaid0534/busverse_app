@@ -4,6 +4,7 @@ import 'package:bus_ticket_system/database/db_helper.dart';
 import 'package:intl/intl.dart';
 import 'shift_slip_screen.dart';
 import 'shift_handover_screen.dart';
+import 'counter_staff_screen.dart';
 
 class ShiftReportScreen extends StatefulWidget {
   final Map<String, dynamic>? userProfile;
@@ -16,7 +17,6 @@ class ShiftReportScreen extends StatefulWidget {
 
 class _ShiftReportScreenState extends State<ShiftReportScreen> {
   bool _isLoading = true;
-  Map<String, dynamic> _stats = {};
   List<Map<String, dynamic>> _shiftBookings = [];
   DateTime _currentTime = DateTime.now();
   Timer? _clockTimer;
@@ -28,7 +28,6 @@ class _ShiftReportScreenState extends State<ShiftReportScreen> {
   List<Map<String, dynamic>> _registeredAgents = [];
 
   static const Color primaryBlue = Color(0xFF388AF6);
-  static const Color darkNavy = Color(0xFF1E3C72);
   static const Color darkText = Color(0xFF1E293B);
   static const Color subText = Color(0xFF64748B);
   static const Color bgSurface = Color(0xFFF8FAFC);
@@ -41,32 +40,43 @@ class _ShiftReportScreenState extends State<ShiftReportScreen> {
     if (_activeShift != null && _activeShift!['agentName'] != null) {
       return _activeShift!['agentName'];
     }
-    final fn = widget.userProfile?['firstName'] ?? 'Terminal';
-    final ln = widget.userProfile?['lastName'] ?? 'Agent';
-    return "$fn $ln".trim();
+    if (_registeredAgents.isNotEmpty) {
+      return _registeredAgents.first['name'] ?? 'Not Clocked In';
+    }
+    final fn = widget.userProfile?['firstName'] ?? '';
+    final ln = widget.userProfile?['lastName'] ?? '';
+    final full = "$fn $ln".trim();
+    if (full.isNotEmpty) return full;
+    return widget.userProfile?['name'] ?? 'Not Clocked In';
   }
 
   String get currentAgentCode {
     if (_activeShift != null && _activeShift!['agentCode'] != null) {
       return _activeShift!['agentCode'];
     }
-    return "AGT-101";
+    if (_registeredAgents.isNotEmpty) {
+      return _registeredAgents.first['agentCode'] ?? '-';
+    }
+    return widget.userProfile?['agentCode'] ?? '-';
   }
 
   String get currentShiftType {
     if (_activeShift != null && _activeShift!['shiftType'] != null) {
       return _activeShift!['shiftType'];
     }
-    return "Morning";
+    final hour = DateTime.now().hour;
+    if (hour >= 6 && hour < 14) return "Morning";
+    if (hour >= 14 && hour < 22) return "Evening";
+    return "Night";
   }
 
   double get openingFloat {
     if (_activeShift != null && _activeShift!['openingFloat'] != null) {
       return (_activeShift!['openingFloat'] as num).toDouble();
     }
-    return 5000.0;
+    return 0.0;
   }
-  String get agentEmail => widget.userProfile?['email'] ?? 'agent@busverse.com';
+  String get agentEmail => widget.userProfile?['email'] ?? '';
 
   @override
   void initState() {
@@ -95,7 +105,6 @@ class _ShiftReportScreenState extends State<ShiftReportScreen> {
 
       if (mounted) {
         setState(() {
-          _stats = stats;
           _shiftBookings = bookings;
           _activeShift = active;
           _registeredAgents = agents;
@@ -108,36 +117,64 @@ class _ShiftReportScreenState extends State<ShiftReportScreen> {
     }
   }
 
-  double get _totalRevenue {
-    if (_stats['todayRevenue'] != null && (_stats['todayRevenue'] as num) > 0) {
-      return (_stats['todayRevenue'] as num).toDouble();
+  bool _isBookingInCurrentShift(Map<String, dynamic> b) {
+    if (_activeShift == null || _activeShift!['openingTime'] == null) {
+      return false;
     }
-    return (_stats['totalRevenue'] as num?)?.toDouble() ?? 0.0;
+    final openingStr = _activeShift!['openingTime'].toString();
+    final shiftStart = DateTime.tryParse(openingStr);
+    if (shiftStart == null) return true;
+
+    final crAt = b['createdAt']?.toString() ?? b['created_at']?.toString() ?? '';
+    if (crAt.isNotEmpty) {
+      final dt = DateTime.tryParse(crAt);
+      if (dt != null) {
+        return dt.isAfter(shiftStart) || dt.isAtSameMomentAs(shiftStart);
+      }
+    }
+
+    final bDate = b['bookingDate']?.toString() ?? b['booking_date']?.toString() ?? '';
+    if (bDate.isNotEmpty) {
+      final dt = DateTime.tryParse(bDate);
+      if (dt != null) {
+        return dt.isAfter(shiftStart) || dt.isAtSameMomentAs(shiftStart);
+      }
+    }
+    return false;
   }
 
-  int get _totalTickets {
-    if (_stats['todayBookings'] != null && (_stats['todayBookings'] as int) > 0) {
-      return _stats['todayBookings'] as int;
-    }
-    return _shiftBookings.length;
+  List<Map<String, dynamic>> get _currentShiftBookings {
+    if (_activeShift == null) return [];
+    return _shiftBookings.where(_isBookingInCurrentShift).toList();
   }
+
+  double get _totalRevenue {
+    double total = 0.0;
+    for (var b in _currentShiftBookings) {
+      final fare = (b['fare'] as num?)?.toDouble() ?? 0.0;
+      total += fare;
+    }
+    return total;
+  }
+
+  int get _totalTickets => _currentShiftBookings.length;
 
   double get _cashRevenue {
     double cash = 0.0;
-    for (var b in _shiftBookings) {
-      final method = (b['paymentMethod'] ?? '').toString().toLowerCase();
+    for (var b in _currentShiftBookings) {
+      final method = (b['paymentMethod'] ?? b['payment_method'] ?? '').toString().toLowerCase();
       final fare = (b['fare'] as num?)?.toDouble() ?? 0.0;
       if (method.contains('cash') || method.isEmpty) {
         cash += fare;
       }
     }
-    return cash > 0 ? cash : _totalRevenue;
+    return cash;
   }
 
   double get _digitalRevenue {
     double dig = 0.0;
-    for (var b in _shiftBookings) {
-      final method = (b['paymentMethod'] ?? '').toString().toLowerCase();
+    for (var b in _currentShiftBookings) {
+      final method = (b['paymentMethod'] ?? b['payment_method'] ?? '').toString().toLowerCase();
       final fare = (b['fare'] as num?)?.toDouble() ?? 0.0;
       if (!method.contains('cash') && method.isNotEmpty) {
         dig += fare;
@@ -149,9 +186,9 @@ class _ShiftReportScreenState extends State<ShiftReportScreen> {
   double get _netDrawerCash => openingFloat + _cashRevenue;
 
   List<Map<String, dynamic>> get _filteredBookings {
-    if (_searchQuery.trim().isEmpty) return _shiftBookings;
+    if (_searchQuery.trim().isEmpty) return _currentShiftBookings;
     final q = _searchQuery.trim().toLowerCase();
-    return _shiftBookings.where((b) {
+    return _currentShiftBookings.where((b) {
       final name = (b['passengerName'] ?? '').toString().toLowerCase();
       final phone = (b['passengerPhone'] ?? '').toString().toLowerCase();
       final seat = (b['seatNumber'] ?? '').toString().toLowerCase();
@@ -173,18 +210,29 @@ class _ShiftReportScreenState extends State<ShiftReportScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          "Counter Shift & Handover",
+          "Manage Shift",
           style: TextStyle(
             color: darkText,
             fontSize: 16,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w700,
           ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.group_rounded, color: darkNavy, size: 20),
-            tooltip: "Manage Agents & PINs",
-            onPressed: _showAgentManagementModal,
+            icon: const Icon(Icons.badge_outlined, color: primaryBlue, size: 22),
+            tooltip: "Counter Staff & PINs",
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CounterStaffScreen(
+                    terminalCity: terminalCity,
+                    terminalName: terminalName,
+                  ),
+                ),
+              );
+              _loadShiftData();
+            },
           ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: primaryBlue, size: 20),
@@ -199,31 +247,36 @@ class _ShiftReportScreenState extends State<ShiftReportScreen> {
               onRefresh: _loadShiftData,
               color: primaryBlue,
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // 1. Shift Duty Card
                     _buildShiftHeaderCard(),
 
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 12),
 
-                    // 2. Overview Financial KPIs
+                    // 2. Overview Financial KPIs (4 Cards in 1 Row)
                     _buildKpiGrid(),
 
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 12),
 
                     // 3. Cash Drawer Reconciliation Card
                     _buildCashDrawerCard(),
 
+                    const SizedBox(height: 12),
+
+                    // 4. Inline Shift Slip & Handover Action Buttons
+                    _buildInlineShiftActions(),
+
                     const SizedBox(height: 16),
 
-                    // 4. Shift Issued Tickets Header & Search
+                    // 5. Shift Issued Tickets Header & Search
                     _buildTransactionsSectionHeader(),
 
                     const SizedBox(height: 10),
 
-                    // 5. Shift Bookings List
+                    // 6. Shift Bookings List
                     _buildTransactionsList(),
 
                     const SizedBox(height: 24),
@@ -231,19 +284,22 @@ class _ShiftReportScreenState extends State<ShiftReportScreen> {
                 ),
               ),
             ),
-      bottomNavigationBar: _buildBottomActions(),
     );
   }
 
   // ─── 1. SHIFT DUTY HEADER CARD ───
   Widget _buildShiftHeaderCard() {
-    final dateFormatted = DateFormat('EEEE, dd MMMM yyyy').format(_currentTime);
+    final dateFormatted = DateFormat('dd MMM yyyy').format(_currentTime);
+    final dayFormatted = DateFormat('EEE').format(_currentTime);
     final timeFormatted = DateFormat('hh:mm:ss a').format(_currentTime);
     final bool hasActiveShift = _activeShift != null;
+    final inTimeFormatted = _activeShift?['openingTime'] != null
+        ? DateFormat('hh:mm a').format(DateTime.parse(_activeShift!['openingTime']))
+        : "08:00 AM (Auto)";
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -259,70 +315,52 @@ class _ShiftReportScreenState extends State<ShiftReportScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Top Row: Avatar + Agent Name & Shift Type + Status Pill
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: const Color(0xFFEFF6FF),
+                child: Text(
+                  currentAgentName.isNotEmpty ? currentAgentName[0].toUpperCase() : 'A',
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: primaryBlue),
+                ),
+              ),
+              const SizedBox(width: 10),
               Expanded(
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: primaryBlue.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
+                    Text(
+                      currentAgentName,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: darkText,
                       ),
-                      child: const Icon(Icons.badge_rounded, color: primaryBlue, size: 20),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  currentAgentName,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: darkText),
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue.shade50,
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: primaryBlue.withValues(alpha: 0.3)),
-                                ),
-                                child: Text(
-                                  currentAgentCode,
-                                  style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600, color: primaryBlue),
-                                ),
-                              ),
-                            ],
-                          ),
-                          Text(
-                            "$currentShiftType Shift • Float: PKR ${openingFloat.toStringAsFixed(0)}",
-                            style: const TextStyle(fontSize: 11, color: subText),
-                          ),
-                        ],
-                      ),
+                    const SizedBox(height: 2),
+                    Text(
+                      "$currentShiftType Shift • Float: PKR ${openingFloat.toStringAsFixed(0)}",
+                      style: const TextStyle(fontSize: 11.5, color: subText),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
               InkWell(
                 onTap: hasActiveShift ? null : _showShiftInModal,
                 borderRadius: BorderRadius.circular(20),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                   decoration: BoxDecoration(
-                    color: hasActiveShift ? const Color(0xFFDCFCE7) : const Color(0xFFFEF3C7),
+                    color: hasActiveShift ? const Color(0xFFEFF6FF) : const Color(0xFFFEF3C7),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: hasActiveShift ? const Color(0xFF86EFAC) : const Color(0xFFFCD34D),
+                      color: hasActiveShift ? const Color(0xFFBFDBFE) : const Color(0xFFFCD34D),
                     ),
                   ),
                   child: Row(
@@ -330,15 +368,15 @@ class _ShiftReportScreenState extends State<ShiftReportScreen> {
                     children: [
                       CircleAvatar(
                         radius: 3.5,
-                        backgroundColor: hasActiveShift ? const Color(0xFF16A34A) : const Color(0xFFD97706),
+                        backgroundColor: hasActiveShift ? primaryBlue : const Color(0xFFD97706),
                       ),
-                      const SizedBox(width: 5),
+                      const SizedBox(width: 4),
                       Text(
-                        hasActiveShift ? "ON DUTY (PIN OK)" : "CLOCK IN REQUIRED",
+                        hasActiveShift ? "ON DUTY" : "CLOCK IN",
                         style: TextStyle(
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w600,
-                          color: hasActiveShift ? const Color(0xFF16A34A) : const Color(0xFFD97706),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: hasActiveShift ? primaryBlue : const Color(0xFFD97706),
                           letterSpacing: 0.3,
                         ),
                       ),
@@ -348,32 +386,32 @@ class _ShiftReportScreenState extends State<ShiftReportScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+
+          const SizedBox(height: 10),
           const Divider(height: 1, color: borderColor),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
+
+          // Metadata Grid
           Row(
             children: [
               Expanded(
                 child: _metaInfo("TERMINAL LOCATION", "$terminalCity • $terminalName"),
               ),
+              const SizedBox(width: 8),
               Expanded(
-                child: _metaInfo("SHIFT DATE", dateFormatted),
+                child: _metaInfo("SHIFT DATE", "$dayFormatted, $dateFormatted"),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Row(
             children: [
               Expanded(
                 child: _metaInfo("LIVE TIME", timeFormatted),
               ),
+              const SizedBox(width: 8),
               Expanded(
-                child: _metaInfo(
-                  "SHIFT IN TIME",
-                  _activeShift?['openingTime'] != null
-                      ? DateFormat('hh:mm a').format(DateTime.parse(_activeShift!['openingTime']))
-                      : "08:00 AM (Auto)",
-                ),
+                child: _metaInfo("SHIFT IN TIME", inTimeFormatted),
               ),
             ],
           ),
@@ -386,125 +424,116 @@ class _ShiftReportScreenState extends State<ShiftReportScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w500, color: subText)),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: subText, letterSpacing: 0.3),
+        ),
         const SizedBox(height: 2),
         Text(
           value,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: darkText),
+          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: darkText),
         ),
       ],
     );
   }
 
-  // ─── 2. KPI GRID ───
+  // ─── 2. 4 KPI CARDS IN 1 ROW (ALL BLUE THEME) ───
   Widget _buildKpiGrid() {
-    return Column(
+    return Row(
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: _buildKpiCard(
-                title: "Shift Total Revenue",
-                value: "PKR ${_totalRevenue.toStringAsFixed(0)}",
-                subtitle: "Total collections",
-                icon: Icons.payments_rounded,
-                color: primaryBlue,
-                bgLight: const Color(0xFFEFF6FF),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _buildKpiCard(
-                title: "Tickets Issued",
-                value: "$_totalTickets",
-                subtitle: "Walk-in & counter",
-                icon: Icons.confirmation_number_rounded,
-                color: const Color(0xFF10B981),
-                bgLight: const Color(0xFFF0FDF4),
-              ),
-            ),
-          ],
+        Expanded(
+          child: _buildCompactKpiCard(
+            heading: "Revenue",
+            value: "PKR ${_totalRevenue.toStringAsFixed(0)}",
+            icon: Icons.payments_rounded,
+          ),
         ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: _buildKpiCard(
-                title: "Cash at Counter",
-                value: "PKR ${_cashRevenue.toStringAsFixed(0)}",
-                subtitle: "Ticket cash sales",
-                icon: Icons.point_of_sale_rounded,
-                color: const Color(0xFFF59E0B),
-                bgLight: const Color(0xFFFFFBEB),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _buildKpiCard(
-                title: "Card / Digital POS",
-                value: "PKR ${_digitalRevenue.toStringAsFixed(0)}",
-                subtitle: "Online / machine",
-                icon: Icons.credit_card_rounded,
-                color: const Color(0xFF8B5CF6),
-                bgLight: const Color(0xFFF5F3FF),
-              ),
-            ),
-          ],
+        const SizedBox(width: 6),
+        Expanded(
+          child: _buildCompactKpiCard(
+            heading: "Tickets",
+            value: "$_totalTickets",
+            icon: Icons.confirmation_number_rounded,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: _buildCompactKpiCard(
+            heading: "Cash",
+            value: "PKR ${_cashRevenue.toStringAsFixed(0)}",
+            icon: Icons.point_of_sale_rounded,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: _buildCompactKpiCard(
+            heading: "Card/Digital",
+            value: "PKR ${_digitalRevenue.toStringAsFixed(0)}",
+            icon: Icons.credit_card_rounded,
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildKpiCard({
-    required String title,
+  Widget _buildCompactKpiCard({
+    required String heading,
     required String value,
-    required String subtitle,
     required IconData icon,
-    required Color color,
-    required Color bgLight,
   }) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: borderColor),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 6,
+            blurRadius: 5,
             offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: subText),
-              ),
-              Container(
-                padding: const EdgeInsets.all(5),
-                decoration: BoxDecoration(color: bgLight, borderRadius: BorderRadius.circular(7)),
-                child: Icon(icon, color: color, size: 16),
-              ),
-            ],
+          Container(
+            padding: const EdgeInsets.all(7),
+            decoration: const BoxDecoration(
+              color: Color(0xFFEFF6FF),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: primaryBlue, size: 24),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
-            value,
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: color),
+            heading,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: subText,
+            ),
           ),
           const SizedBox(height: 2),
-          Text(
-            subtitle,
-            style: const TextStyle(fontSize: 10, color: subText),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: primaryBlue,
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -515,7 +544,7 @@ class _ShiftReportScreenState extends State<ShiftReportScreen> {
   Widget _buildCashDrawerCard() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -529,22 +558,22 @@ class _ShiftReportScreenState extends State<ShiftReportScreen> {
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: darkNavy.withValues(alpha: 0.08),
+                  color: primaryBlue.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.account_balance_wallet_rounded, size: 16, color: darkNavy),
+                child: const Icon(Icons.account_balance_wallet_rounded, size: 16, color: primaryBlue),
               ),
               const SizedBox(width: 8),
               const Text(
                 "Cash Drawer Reconciliation",
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: darkText),
+                style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: darkText),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           _drawerRow("Opening Drawer Float (Change)", "PKR ${openingFloat.toStringAsFixed(0)}", isMuted: true),
           const SizedBox(height: 6),
-          _drawerRow("(+) Shift Cash Ticket Sales", "PKR ${_cashRevenue.toStringAsFixed(0)}", isPositive: true),
+          _drawerRow("(+) Shift Cash Ticket Sales", "PKR ${_cashRevenue.toStringAsFixed(0)}", isBlue: true),
           const SizedBox(height: 6),
           _drawerRow("(+) Card / Digital POS Sales", "PKR ${_digitalRevenue.toStringAsFixed(0)}", isMuted: true),
           const SizedBox(height: 10),
@@ -568,7 +597,7 @@ class _ShiftReportScreenState extends State<ShiftReportScreen> {
               ),
               Text(
                 "PKR ${_netDrawerCash.toStringAsFixed(0)}",
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF16A34A)),
+                style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800, color: primaryBlue),
               ),
             ],
           ),
@@ -577,7 +606,7 @@ class _ShiftReportScreenState extends State<ShiftReportScreen> {
     );
   }
 
-  Widget _drawerRow(String title, String amount, {bool isPositive = false, bool isMuted = false}) {
+  Widget _drawerRow(String title, String amount, {bool isBlue = false, bool isMuted = false}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -593,8 +622,99 @@ class _ShiftReportScreenState extends State<ShiftReportScreen> {
           amount,
           style: TextStyle(
             fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: isPositive ? const Color(0xFF16A34A) : (isMuted ? subText : darkText),
+            fontWeight: FontWeight.w700,
+            color: isBlue ? primaryBlue : (isMuted ? subText : darkText),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ─── 4. INLINE ACTION BUTTONS (UNDER CASH RECONCILIATION) ───
+  Widget _buildInlineShiftActions() {
+    return Row(
+      children: [
+        // Shift Slip Button
+        Expanded(
+          flex: 4,
+          child: OutlinedButton.icon(
+            icon: const Icon(Icons.receipt_long_rounded, size: 16, color: primaryBlue),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: Color(0xFFBFDBFE)),
+              backgroundColor: const Color(0xFFEFF6FF),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              padding: const EdgeInsets.symmetric(vertical: 9),
+            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ShiftSlipScreen(
+                    shiftData: {
+                      'terminalCity': terminalCity,
+                      'agentName': currentAgentName,
+                      'agentCode': currentAgentCode,
+                      'shiftType': currentShiftType,
+                      'openingFloat': openingFloat,
+                      'totalTickets': _totalTickets,
+                      'cashRevenue': _cashRevenue,
+                      'digitalRevenue': _digitalRevenue,
+                      'netDrawerCash': _netDrawerCash,
+                    },
+                  ),
+                ),
+              );
+            },
+            label: const Text(
+              "Shift Slip",
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: primaryBlue),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+
+        // PIN Handover & Out Button
+        Expanded(
+          flex: 6,
+          child: ElevatedButton.icon(
+            icon: const Icon(Icons.swap_horiz_rounded, size: 17),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryBlue,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              padding: const EdgeInsets.symmetric(vertical: 9),
+            ),
+            onPressed: () async {
+              final active = _activeShift ?? {
+                'id': 1,
+                'agentId': _registeredAgents.isNotEmpty ? _registeredAgents.first['id'] : 1,
+                'agentName': currentAgentName,
+                'agentCode': currentAgentCode,
+                'shiftType': currentShiftType,
+                'openingFloat': openingFloat,
+              };
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ShiftHandoverScreen(
+                    activeShift: active,
+                    registeredAgents: _registeredAgents,
+                    terminalCity: terminalCity,
+                    terminalName: terminalName,
+                    totalTickets: _totalTickets,
+                    cashRevenue: _cashRevenue,
+                    digitalRevenue: _digitalRevenue,
+                    netDrawerCash: _netDrawerCash,
+                  ),
+                ),
+              );
+              _loadShiftData();
+            },
+            label: const Text(
+              "PIN Handover & Out",
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            ),
           ),
         ),
       ],
@@ -802,107 +922,40 @@ class _ShiftReportScreenState extends State<ShiftReportScreen> {
     );
   }
 
-  // ─── BOTTOM ACTIONS BAR ───
-  Widget _buildBottomActions() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: borderColor)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 1,
-            child: OutlinedButton.icon(
-              icon: const Icon(Icons.receipt_long_rounded, size: 16, color: darkNavy),
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: borderColor),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ShiftSlipScreen(
-                      shiftData: {
-                        'terminalCity': terminalCity,
-                        'agentName': currentAgentName,
-                        'agentCode': currentAgentCode,
-                        'shiftType': currentShiftType,
-                        'openingFloat': openingFloat,
-                        'totalTickets': _totalTickets,
-                        'cashRevenue': _cashRevenue,
-                        'digitalRevenue': _digitalRevenue,
-                        'netDrawerCash': _netDrawerCash,
-                      },
-                    ),
-                  ),
-                );
-              },
-              label: const Text("Shift Slip", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: darkNavy)),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
-            child: ElevatedButton.icon(
-              icon: const Icon(Icons.swap_horiz_rounded, size: 18),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: primaryBlue,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-              onPressed: () async {
-                final active = _activeShift ?? {
-                  'id': 1,
-                  'agentId': _registeredAgents.isNotEmpty ? _registeredAgents.first['id'] : 1,
-                  'agentName': currentAgentName,
-                  'agentCode': currentAgentCode,
-                  'shiftType': currentShiftType,
-                  'openingFloat': openingFloat,
-                };
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ShiftHandoverScreen(
-                      activeShift: active,
-                      registeredAgents: _registeredAgents,
-                      terminalCity: terminalCity,
-                      terminalName: terminalName,
-                      netDrawerCash: _netDrawerCash,
-                      cashRevenue: _cashRevenue,
-                      digitalRevenue: _digitalRevenue,
-                      totalTickets: _totalTickets,
-                    ),
-                  ),
-                );
-                _loadShiftData();
-              },
-              label: const Text("PIN Handover & Out", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   // ─── SHIFT IN (PUNCH IN WITH PIN) MODAL ───
   void _showShiftInModal() {
     if (_registeredAgents.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("No agents found. Please register an agent first.")),
+        SnackBar(
+          content: const Text("No staff registered. Please add a counter agent first."),
+          action: SnackBarAction(
+            label: "Add Staff",
+            textColor: Colors.amber,
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CounterStaffScreen(
+                    terminalCity: terminalCity,
+                    terminalName: terminalName,
+                  ),
+                ),
+              );
+              _loadShiftData();
+            },
+          ),
+        ),
       );
       return;
     }
 
     Map<String, dynamic> selectedAgent = _registeredAgents.first;
-    String shiftType = "Morning";
+    final hour = DateTime.now().hour;
+    String shiftType = (hour >= 6 && hour < 14)
+        ? "Morning"
+        : (hour >= 14 && hour < 22 ? "Evening" : "Night");
     final pinCtrl = TextEditingController();
-    final floatCtrl = TextEditingController(text: "5000");
+    final floatCtrl = TextEditingController(text: "0");
 
     showDialog(
       context: context,
@@ -1058,11 +1111,11 @@ class _ShiftReportScreenState extends State<ShiftReportScreen> {
                     return;
                   }
 
-                  final opFloat = double.tryParse(floatCtrl.text.trim()) ?? 5000.0;
+                  final opFloat = double.tryParse(floatCtrl.text.trim()) ?? 0.0;
                   await DBHelper.instance.startShift(
                     agentId: selectedAgent['id'] as int,
                     agentName: selectedAgent['name'] ?? 'Agent',
-                    agentCode: selectedAgent['agentCode'] ?? 'AGT-01',
+                    agentCode: selectedAgent['agentCode'] ?? '-',
                     shiftType: shiftType,
                     openingFloat: opFloat,
                     terminalCity: terminalCity,
@@ -1088,218 +1141,5 @@ class _ShiftReportScreenState extends State<ShiftReportScreen> {
       ),
     );
   }
-
-  // ─── AGENT MANAGEMENT MODAL ───
-  void _showAgentManagementModal() {
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setModalState) {
-          return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.badge_rounded, color: primaryBlue, size: 20),
-                    SizedBox(width: 8),
-                    Text("Counter Staff & PINs", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                  ],
-                ),
-                IconButton(
-                  icon: const Icon(Icons.person_add_rounded, color: primaryBlue, size: 20),
-                  tooltip: "Register New Agent",
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    _showRegisterAgentDialog();
-                  },
-                ),
-              ],
-            ),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: _registeredAgents.isEmpty
-                  ? const Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Text("No agents registered for this terminal yet.", style: TextStyle(color: subText, fontSize: 12)),
-                    )
-                  : ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: _registeredAgents.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1, color: borderColor),
-                      itemBuilder: (c, idx) {
-                        final ag = _registeredAgents[idx];
-                        return ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: CircleAvatar(
-                            radius: 18,
-                            backgroundColor: primaryBlue.withValues(alpha: 0.1),
-                            child: Text(
-                              (ag['name'] ?? 'A')[0].toUpperCase(),
-                              style: const TextStyle(fontWeight: FontWeight.w700, color: primaryBlue),
-                            ),
-                          ),
-                          title: Text(ag['name'] ?? '', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: darkText)),
-                          subtitle: Text("Code: ${ag['agentCode']} • PIN: •••• (${ag['phone'] ?? ''})", style: const TextStyle(fontSize: 11, color: subText)),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.edit_rounded, size: 16, color: primaryBlue),
-                            onPressed: () {
-                              Navigator.pop(ctx);
-                              _showEditAgentDialog(ag);
-                            },
-                          ),
-                        );
-                      },
-                    ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text("Close", style: TextStyle(color: subText, fontSize: 12.5)),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  // Register New Agent Dialog
-  void _showRegisterAgentDialog() {
-    final nameCtrl = TextEditingController();
-    final codeCtrl = TextEditingController(text: "AGT-10${_registeredAgents.length + 1}");
-    final pinCtrl = TextEditingController();
-    final phoneCtrl = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text("Register Counter Agent", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameCtrl,
-                decoration: const InputDecoration(labelText: "Full Name", labelStyle: TextStyle(fontSize: 12)),
-              ),
-              TextField(
-                controller: codeCtrl,
-                decoration: const InputDecoration(labelText: "Agent Code (e.g. AGT-104)", labelStyle: TextStyle(fontSize: 12)),
-              ),
-              TextField(
-                controller: phoneCtrl,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(labelText: "Phone Number", labelStyle: TextStyle(fontSize: 12)),
-              ),
-              TextField(
-                controller: pinCtrl,
-                keyboardType: TextInputType.number,
-                maxLength: 4,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: "4-Digit Security PIN", counterText: "", labelStyle: TextStyle(fontSize: 12)),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: primaryBlue, foregroundColor: Colors.white),
-            onPressed: () async {
-              if (nameCtrl.text.trim().isEmpty || pinCtrl.text.trim().length < 4) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Name and 4-digit PIN are required.")),
-                );
-                return;
-              }
-              await DBHelper.instance.addTerminalAgent(
-                agentCode: codeCtrl.text.trim(),
-                name: nameCtrl.text.trim(),
-                pin: pinCtrl.text.trim(),
-                phone: phoneCtrl.text.trim(),
-                terminalCity: terminalCity,
-              );
-              if (ctx.mounted) {
-                Navigator.pop(ctx);
-              }
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Agent registered successfully!"), backgroundColor: Color(0xFF16A34A)),
-                );
-                _loadShiftData();
-              }
-            },
-            child: const Text("Register"),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Edit Agent PIN Dialog
-  void _showEditAgentDialog(Map<String, dynamic> agent) {
-    final nameCtrl = TextEditingController(text: agent['name'] ?? '');
-    final pinCtrl = TextEditingController(text: agent['pin'] ?? '');
-    final phoneCtrl = TextEditingController(text: agent['phone'] ?? '');
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text("Edit ${agent['agentCode']}", style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameCtrl,
-                decoration: const InputDecoration(labelText: "Full Name", labelStyle: TextStyle(fontSize: 12)),
-              ),
-              TextField(
-                controller: phoneCtrl,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(labelText: "Phone Number", labelStyle: TextStyle(fontSize: 12)),
-              ),
-              TextField(
-                controller: pinCtrl,
-                keyboardType: TextInputType.number,
-                maxLength: 4,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: "New 4-Digit PIN", counterText: "", labelStyle: TextStyle(fontSize: 12)),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: primaryBlue, foregroundColor: Colors.white),
-            onPressed: () async {
-              if (pinCtrl.text.trim().length < 4) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("PIN must be 4 digits.")));
-                return;
-              }
-              await DBHelper.instance.updateTerminalAgent(
-                agentId: agent['id'] as int,
-                name: nameCtrl.text.trim(),
-                pin: pinCtrl.text.trim(),
-                phone: phoneCtrl.text.trim(),
-              );
-              if (ctx.mounted) {
-                Navigator.pop(ctx);
-              }
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Agent updated!"), backgroundColor: Color(0xFF16A34A)));
-                _loadShiftData();
-              }
-            },
-            child: const Text("Update"),
-          ),
-        ],
-      ),
-    );
-  }
 }
+

@@ -42,8 +42,8 @@ class _ShiftHandoverScreenState extends State<ShiftHandoverScreen> {
   late final TextEditingController _countedCashCtrl;
   bool _isProcessing = false;
 
-  String get currentAgentName => widget.activeShift['agentName'] ?? 'Agent';
-  String get currentAgentCode => widget.activeShift['agentCode'] ?? 'AGT-101';
+  String get currentAgentName => widget.activeShift['agentName'] ?? 'Unassigned';
+  String get currentAgentCode => widget.activeShift['agentCode'] ?? '-';
   String get currentShiftType => widget.activeShift['shiftType'] ?? 'Morning';
 
   @override
@@ -52,7 +52,7 @@ class _ShiftHandoverScreenState extends State<ShiftHandoverScreen> {
     _countedCashCtrl = TextEditingController(text: widget.netDrawerCash.toStringAsFixed(0));
     _selectedIncomingAgent = widget.registeredAgents.firstWhere(
       (a) => a['agentCode'] != currentAgentCode,
-      orElse: () => widget.registeredAgents.first,
+      orElse: () => widget.registeredAgents.isNotEmpty ? widget.registeredAgents.first : {},
     );
     _nextShiftType = currentShiftType == "Morning"
         ? "Evening"
@@ -115,9 +115,9 @@ class _ShiftHandoverScreenState extends State<ShiftHandoverScreen> {
         cashSales: widget.cashRevenue,
         digitalSales: widget.digitalRevenue,
         ticketsCount: widget.totalTickets,
-        nextAgentId: _selectedIncomingAgent['id'] as int,
-        nextAgentName: _selectedIncomingAgent['name'] ?? 'Agent',
-        nextAgentCode: _selectedIncomingAgent['agentCode'] ?? 'AGT-02',
+        nextAgentId: _selectedIncomingAgent['id'] as int? ?? 0,
+        nextAgentName: _selectedIncomingAgent['name'] ?? '',
+        nextAgentCode: _selectedIncomingAgent['agentCode'] ?? '-',
         nextShiftType: _nextShiftType,
         nextOpeningFloat: countedCash,
         terminalCity: widget.terminalCity,
@@ -128,7 +128,7 @@ class _ShiftHandoverScreenState extends State<ShiftHandoverScreen> {
         setState(() => _isProcessing = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Handover Complete! Control transferred to ${_selectedIncomingAgent['name']}"),
+            content: Text("Handover Complete! Control transferred to ${_selectedIncomingAgent['name'] ?? 'Next Agent'}"),
             backgroundColor: const Color(0xFF16A34A),
           ),
         );
@@ -143,7 +143,7 @@ class _ShiftHandoverScreenState extends State<ShiftHandoverScreen> {
                 'agentName': currentAgentName,
                 'agentCode': currentAgentCode,
                 'shiftType': currentShiftType,
-                'openingFloat': widget.activeShift['openingFloat'] ?? 5000.0,
+                'openingFloat': (widget.activeShift['openingFloat'] as num?)?.toDouble() ?? 0.0,
                 'totalTickets': widget.totalTickets,
                 'cashRevenue': widget.cashRevenue,
                 'digitalRevenue': widget.digitalRevenue,

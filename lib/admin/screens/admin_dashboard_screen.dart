@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:bus_ticket_system/database/db_helper.dart';
+import 'package:bus_ticket_system/admin/screens/fleet/live_fleet_radar_screen.dart';
+import 'package:bus_ticket_system/admin/screens/drivers/manage_drivers_screen.dart';
 import 'all_users_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -11,12 +13,12 @@ class AdminDashboardScreen extends StatefulWidget {
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   static const Color primaryBlue = Color(0xFF388AF6);
-  static const Color darkNavy = Color(0xFF1E3C72);
   static const Color darkText = Color(0xFF1E293B);
   static const Color subText = Color(0xFF64748B);
   static const Color bgSurface = Color(0xFFF8FAFC);
 
   bool _isLoading = true;
+  int _currentIndex = 0;
   Map<String, dynamic> _stats = {
     'totalBuses': 0,
     'totalRoutes': 0,
@@ -48,6 +50,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         });
       }
     } catch (e) {
+      debugPrint("Error loading admin stats: $e");
       if (mounted) {
         setState(() => _isLoading = false);
       }
@@ -110,6 +113,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     final List<Map<String, dynamic>> adminOptions = [
       {
+        'icon': Icons.radar_rounded,
+        'title': 'Live Fleet Radar',
+        'subtitle': '$totalBuses active buses on GPS',
+        'badge': 'Live GPS',
+        'badgeColor': const Color(0xFF10B981),
+        'color': const Color(0xFF10B981),
+        'onTap': () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const LiveFleetRadarScreen()),
+          );
+          _loadDashboardData();
+        },
+      },
+      {
         'icon': Icons.directions_bus_rounded,
         'title': 'Manage Buses',
         'subtitle': '$totalBuses active buses',
@@ -144,14 +162,29 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         },
       },
       {
-        'icon': Icons.badge_rounded,
-        'title': 'Terminal Agents',
-        'subtitle': '$totalSubAdmins counter agents',
-        'badge': totalSubAdmins > 0 ? '$totalSubAdmins active' : null,
-        'badgeColor': const Color(0xFF388AF6),
+        'icon': Icons.apartment_rounded,
+        'title': 'Manage Terminals',
+        'subtitle': '$totalSubAdmins terminals & live shifts',
+        'badge': 'Live',
+        'badgeColor': const Color(0xFF16A34A),
         'color': const Color(0xFF388AF6),
         'onTap': () async {
-          await Navigator.pushNamed(context, '/manage_sub_admins');
+          await Navigator.pushNamed(context, '/manage_terminals');
+          _loadDashboardData();
+        },
+      },
+      {
+        'icon': Icons.airline_seat_recline_normal_rounded,
+        'title': 'Fleet Captains',
+        'subtitle': 'Commercial bus drivers & GPS',
+        'badge': 'Captain',
+        'badgeColor': const Color(0xFF10B981),
+        'color': const Color(0xFF0284C7),
+        'onTap': () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ManageDriversScreen()),
+          );
           _loadDashboardData();
         },
       },
@@ -195,11 +228,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       },
     ];
 
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final bool isDesktop = screenWidth >= 1024;
+    final bool isTablet = screenWidth >= 650 && screenWidth < 1024;
+
     return Scaffold(
       backgroundColor: bgSurface,
 
       // ================= APP BAR =================
       appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0.5,
+        centerTitle: true,
+        automaticallyImplyLeading: false,
         title: const Text.rich(
           TextSpan(
             children: [
@@ -213,7 +254,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ),
               ),
               TextSpan(
-                text: "Verse ",
+                text: "Verse",
                 style: TextStyle(
                   color: primaryBlue,
                   fontWeight: FontWeight.w900,
@@ -221,21 +262,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   letterSpacing: 0.5,
                 ),
               ),
-              TextSpan(
-                text: "Admin",
-                style: TextStyle(
-                  color: subText,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                ),
-              ),
             ],
           ),
         ),
-        backgroundColor: Colors.white,
-        elevation: 0.5,
-        centerTitle: false,
-        automaticallyImplyLeading: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: darkText, size: 22),
@@ -262,84 +291,175 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ? const Center(child: CircularProgressIndicator(color: primaryBlue))
             : SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ─── 1. HERO ADMIN BANNER ───
-                    _buildAdminHeroBanner(totalRevenue, todayBookings),
-
-                    const SizedBox(height: 18),
-
-                    // ─── 2. LIVE KPI STATS ROW ───
-                    _buildKpiStatsRow(
-                      totalBuses: totalBuses,
-                      totalRoutes: totalRoutes,
-                      totalBookings: totalBookings,
-                      totalUsers: totalUsers,
-                    ),
-
-                    const SizedBox(height: 22),
-
-                    // ─── 3. MANAGEMENT MENU TITLE ───
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                padding: EdgeInsets.symmetric(
+                  horizontal: isDesktop ? 24 : 16,
+                  vertical: 16,
+                ),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1440),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          "Management Services",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: darkText,
-                          ),
+                        // ─── 1. HERO ADMIN BANNER ───
+                        _buildAdminHeroBanner(totalRevenue, todayBookings),
+
+                        const SizedBox(height: 18),
+
+                        // ─── 2. LIVE KPI STATS ROW ───
+                        _buildKpiStatsRow(
+                          totalBuses: totalBuses,
+                          totalRoutes: totalRoutes,
+                          totalBookings: totalBookings,
+                          totalUsers: totalUsers,
                         ),
-                        Text(
-                          "6 Modules",
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: subText,
-                          ),
+
+                        const SizedBox(height: 22),
+
+                        // ─── 3. QUICK SERVICES / MANAGEMENT (4 IN A ROW) ───
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              "Quick Services",
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: darkText,
+                              ),
+                            ),
+                            Text(
+                              "${adminOptions.length} Modules",
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: subText,
+                              ),
+                            ),
+                          ],
                         ),
+
+                        const SizedBox(height: 12),
+
+                        // ─── 4. GRID OF 4 IN 1 ROW TILES ───
+                        GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: adminOptions.length,
+                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: isDesktop ? adminOptions.length : (isTablet ? 6 : 4),
+                            mainAxisSpacing: 10,
+                            crossAxisSpacing: 10,
+                            childAspectRatio: isDesktop ? 1.05 : (isTablet ? 0.95 : 0.82),
+                          ),
+                          itemBuilder: (context, index) {
+                            final item = adminOptions[index];
+                            return _buildAdminCard(
+                              icon: item['icon'] as IconData,
+                              title: item['title'] as String,
+                              subtitle: item['subtitle'] as String,
+                              accentColor: item['color'] as Color,
+                              badge: item['badge'] as String?,
+                              badgeColor: item['badgeColor'] as Color?,
+                              onTap: item['onTap'] as VoidCallback,
+                            );
+                          },
+                        ),
+
+                        const SizedBox(height: 22),
+
+                        // ─── 5. RECENT BOOKINGS OVERVIEW ───
+                        _buildRecentBookingsSection(),
+
+                        const SizedBox(height: 20),
                       ],
                     ),
-
-                    const SizedBox(height: 12),
-
-                    // ─── 4. GRID OF MANAGEMENT CARDS ───
-                    GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: adminOptions.length,
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        mainAxisSpacing: 10,
-                        crossAxisSpacing: 10,
-                        childAspectRatio: 1.55,
-                      ),
-                      itemBuilder: (context, index) {
-                        final item = adminOptions[index];
-                        return _buildAdminCard(
-                          icon: item['icon'] as IconData,
-                          title: item['title'] as String,
-                          subtitle: item['subtitle'] as String,
-                          accentColor: item['color'] as Color,
-                          badge: item['badge'] as String?,
-                          badgeColor: item['badgeColor'] as Color?,
-                          onTap: item['onTap'] as VoidCallback,
-                        );
-                      },
-                    ),
-
-                    const SizedBox(height: 22),
-
-                    // ─── 5. RECENT BOOKINGS OVERVIEW ───
-                    _buildRecentBookingsSection(),
-
-                    const SizedBox(height: 20),
-                  ],
+                  ),
                 ),
               ),
+      ),
+
+      // ================= BOTTOM NAVIGATION BAR (5 ITEMS) =================
+      bottomNavigationBar: _buildBottomNav(),
+    );
+  }
+
+  // ─── BOTTOM NAVIGATION BAR (5 MENU ITEMS) ───
+  Widget _buildBottomNav() {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          top: BorderSide(color: Color(0xFFE2E8F0), width: 0.8),
+        ),
+      ),
+      child: BottomNavigationBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        selectedItemColor: primaryBlue,
+        unselectedItemColor: const Color(0xFF94A3B8),
+        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11),
+        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 10.5),
+        currentIndex: _currentIndex,
+        type: BottomNavigationBarType.fixed,
+        iconSize: 22,
+        onTap: (index) async {
+          setState(() => _currentIndex = index);
+          switch (index) {
+            case 0:
+              // Dashboard (Current)
+              break;
+            case 1:
+              // Fleet Radar
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const LiveFleetRadarScreen()),
+              );
+              _loadDashboardData();
+              setState(() => _currentIndex = 0);
+              break;
+            case 2:
+              // Buses
+              await Navigator.pushNamed(context, '/manage_buses');
+              _loadDashboardData();
+              setState(() => _currentIndex = 0);
+              break;
+            case 3:
+              // Bookings
+              await Navigator.pushNamed(context, '/view_all_booking');
+              _loadDashboardData();
+              setState(() => _currentIndex = 0);
+              break;
+            case 4:
+              // Terminals
+              await Navigator.pushNamed(context, '/manage_terminals');
+              _loadDashboardData();
+              setState(() => _currentIndex = 0);
+              break;
+          }
+        },
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.dashboard_rounded),
+            label: "Dashboard",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.radar_rounded),
+            label: "Fleet Radar",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.directions_bus_rounded),
+            label: "Buses",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.confirmation_num_rounded),
+            label: "Bookings",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.apartment_rounded),
+            label: "Terminals",
+          ),
+        ],
       ),
     );
   }
@@ -348,19 +468,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Widget _buildAdminHeroBanner(double revenue, int todayCount) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [darkNavy, primaryBlue],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: primaryBlue,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: primaryBlue.withValues(alpha: 0.25),
+            color: primaryBlue.withValues(alpha: 0.28),
             blurRadius: 12,
-            offset: const Offset(0, 5),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -370,36 +486,38 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(9),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.16),
+                  color: Colors.white.withValues(alpha: 0.18),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
                   Icons.admin_panel_settings_rounded,
                   color: Colors.white,
-                  size: 24,
+                  size: 22,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               const Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "BusVerse Operations Panel",
+                      "Operations & Control Panel",
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 15.5,
+                        fontSize: 15,
                         fontWeight: FontWeight.w800,
+                        letterSpacing: 0.2,
                       ),
                     ),
                     SizedBox(height: 2),
                     Text(
-                      "Live fleet, routes & booking management",
+                      "Fleet monitoring, routes & live counter tracking",
                       style: TextStyle(
                         color: Colors.white70,
                         fontSize: 11,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
@@ -407,11 +525,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.12),
+              color: Colors.white.withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
             ),
@@ -420,13 +538,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.today_rounded, color: Colors.white70, size: 15),
+                    const Icon(Icons.confirmation_number_rounded, color: Colors.white70, size: 14),
                     const SizedBox(width: 6),
                     Text(
                       "Today's Bookings: $todayCount",
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 12,
+                        fontSize: 11.5,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -548,7 +666,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  // ─── MANAGEMENT CARD ───
+  // ─── MANAGEMENT CARD (4 IN 1 ROW - USER STYLE) ───
   Widget _buildAdminCard({
     required IconData icon,
     required String title,
@@ -558,6 +676,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     String? badge,
     Color? badgeColor,
   }) {
+    // Shorten long labels for clean, non-overflow display in 4-column layout
+    String displayTitle = title;
+    if (title == "Live Fleet Radar") displayTitle = "Fleet Radar";
+    if (title == "Manage Buses") displayTitle = "Buses";
+    if (title == "Manage Routes") displayTitle = "Routes";
+    if (title == "All Bookings") displayTitle = "Bookings";
+    if (title == "Manage Terminals") displayTitle = "Terminals";
+    if (title == "Fleet Captains") displayTitle = "Captains";
+    if (title == "Registered Users") displayTitle = "Users";
+    if (title == "Complaints") displayTitle = "Complaints";
+    if (title == "Feedbacks") displayTitle = "Reviews";
+
     return Material(
       color: Colors.white,
       shape: RoundedRectangleBorder(
@@ -568,65 +698,34 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(7),
-                    decoration: BoxDecoration(
-                      color: accentColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(9),
-                    ),
-                    child: Icon(icon, size: 18, color: accentColor),
-                  ),
-                  if (badge != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: (badgeColor ?? accentColor).withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        badge,
-                        style: TextStyle(
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w800,
-                          color: badgeColor ?? accentColor,
-                        ),
-                      ),
-                    ),
-                ],
+              // Circular large icon
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: accentColor, size: 22),
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      color: darkText,
-                    ),
+              const SizedBox(height: 7),
+              // Clean short title without overflow
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  displayTitle,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: darkText,
                   ),
-                  const SizedBox(height: 1),
-                  Text(
-                    subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 10.5,
-                      color: subText,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ],
           ),

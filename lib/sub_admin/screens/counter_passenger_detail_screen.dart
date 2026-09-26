@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:bus_ticket_system/admin/models/bus_model.dart';
 import 'package:bus_ticket_system/database/db_helper.dart';
-import 'package:bus_ticket_system/services/supabase_service.dart';
 import 'package:bus_ticket_system/sub_admin/screens/ticket_receipt_slip_screen.dart';
 import 'package:intl/intl.dart';
 
@@ -88,7 +87,7 @@ class _CounterPassengerDetailScreenState extends State<CounterPassengerDetailScr
           ? widget.bus.date
           : DateFormat('yyyy-MM-dd').format(widget.selectedDate);
 
-      // 1. Insert into SQLite (Dedicated terminal_bookings table + bookings + payments)
+      // Insert terminal booking into Supabase Cloud
       final bookingId = await DBHelper.instance.insertTerminalBooking(
         busId: widget.bus.id!,
         seatNumbers: widget.selectedSeats,
@@ -103,26 +102,6 @@ class _CounterPassengerDetailScreenState extends State<CounterPassengerDetailScr
         agentName: agentName,
         bookingDate: travelDate,
       );
-
-      // 2. Sync with Supabase (terminal_bookings + payments + bookings)
-      try {
-        await SupabaseService.instance.createTerminalBooking(
-          busId: widget.bus.id!,
-          seatNumbers: widget.selectedSeats,
-          seatGenders: widget.seatGenderMap,
-          passengerName: passengerName,
-          passengerPhone: passengerPhone,
-          passengerCnic: passengerCnic,
-          totalAmount: _totalFare,
-          paymentMethod: _paymentMethod,
-          terminalCity: terminalCity,
-          terminalName: terminalName,
-          agentName: agentName,
-          bookingDate: travelDate,
-        );
-      } catch (e) {
-        debugPrint("Supabase terminal booking sync error: $e");
-      }
 
       if (mounted) {
         setState(() => _isIssuing = false);

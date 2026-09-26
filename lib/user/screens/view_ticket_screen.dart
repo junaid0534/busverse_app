@@ -7,6 +7,7 @@ import 'package:screenshot/screenshot.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:bus_ticket_system/admin/models/bus_model.dart';
+import 'package:bus_ticket_system/user/screens/live_bus_tracking_screen.dart';
 
 class ViewTicketScreen extends StatefulWidget {
   final Map<String, dynamic> ticketData;
@@ -413,6 +414,38 @@ class _ViewTicketScreenState extends State<ViewTicketScreen> {
             const SizedBox(height: 20),
 
             // ─── ACTION BUTTONS ───
+            // 1. Live GPS Tracking Button
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.gps_fixed_rounded, size: 18),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF10B981),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => LiveBusTrackingScreen(ticketData: widget.ticketData),
+                    ),
+                  );
+                },
+                label: const Text(
+                  "Track Live Bus (GPS)",
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            // 2. Share / Save Ticket Button
             SizedBox(
               width: double.infinity,
               height: 48,

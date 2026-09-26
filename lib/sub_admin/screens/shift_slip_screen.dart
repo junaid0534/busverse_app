@@ -27,11 +27,11 @@ class ShiftSlipScreen extends StatelessWidget {
     final now = DateTime.now();
     final dateStr = DateFormat('yyyy-MM-dd HH:mm').format(now);
 
-    final terminalCity = shiftData['terminalCity'] ?? 'Lahore';
-    final agentName = shiftData['agentName'] ?? 'Counter Agent';
-    final agentCode = shiftData['agentCode'] ?? 'AGT-101';
-    final shiftType = shiftData['shiftType'] ?? 'Morning';
-    final openingFloat = (shiftData['openingFloat'] as num?)?.toDouble() ?? 5000.0;
+    final terminalCity = shiftData['terminalCity'] ?? '';
+    final agentName = shiftData['agentName'] ?? 'Unassigned';
+    final agentCode = shiftData['agentCode'] ?? '-';
+    final shiftType = shiftData['shiftType'] ?? 'General';
+    final openingFloat = (shiftData['openingFloat'] as num?)?.toDouble() ?? 0.0;
     final totalTickets = shiftData['totalTickets'] ?? 0;
     final cashRevenue = (shiftData['cashRevenue'] as num?)?.toDouble() ?? 0.0;
     final digitalRevenue = (shiftData['digitalRevenue'] as num?)?.toDouble() ?? 0.0;

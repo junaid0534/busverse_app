@@ -25,46 +25,7 @@ class _ViewAllBookingScreenState extends State<ViewAllBookingScreen> {
       loading = true;
     });
 
-    final db = await DBHelper.instance.database;
-
-    String query = '''
-      SELECT b.id as bookingId, b.userId, b.busId, b.seatNumber, b.gender, b.bookingDate,
-             u.firstName, u.lastName, u.cnic, u.phone,
-             buses.busNumber, buses.fromCity, buses.toCity, buses.time, buses.date as busDate
-      FROM bookings b
-      LEFT JOIN users u ON b.userId = u.id
-      LEFT JOIN buses ON b.busId = buses.id
-    ''';
-
-    List<dynamic> args = [];
-    if (widget.busId != null) {
-      query += ' WHERE b.busId = ?';
-      args.add(widget.busId);
-    }
-
-    query += ' ORDER BY b.id ASC';
-
-    final rows = await db.rawQuery(query, args);
-
-    final payments = await DBHelper.instance.getPayments();
-
-    final enriched = rows.map((r) {
-      final seatStr = r['seatNumber']?.toString() ?? '';
-      Map<String, dynamic>? matchedPayment;
-      for (final p in payments) {
-        if (p['busId'] == r['busId']) {
-          final pSeats = (p['seats'] ?? '').toString().split(',').map((s) => s.trim()).toList();
-          if (pSeats.contains(seatStr)) {
-            matchedPayment = p;
-            break;
-          }
-        }
-      }
-      return {
-        ...r,
-        'payment': matchedPayment,
-      };
-    }).toList();
+    final enriched = await DBHelper.instance.getAllBookingsAdmin(busId: widget.busId);
 
     setState(() {
       bookings = enriched;
@@ -73,8 +34,7 @@ class _ViewAllBookingScreenState extends State<ViewAllBookingScreen> {
   }
 
   Future<void> deleteBooking(int bookingId) async {
-    final db = await DBHelper.instance.database;
-    await db.delete('bookings', where: 'id=?', whereArgs: [bookingId]);
+    await DBHelper.instance.deleteBooking(bookingId);
     await fetchBookings();
   }
 

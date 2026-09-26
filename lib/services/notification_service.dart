@@ -23,7 +23,7 @@ class NotificationService {
   static const String channelDescription = 'Real-time notifications for bus bookings, ticket confirmations and trip updates';
 
   Future<void> initialize() async {
-    if (_isInitialized) return;
+    if (kIsWeb || _isInitialized) return;
 
     // 1. Initialize Local Notifications (Android & iOS)
     try {

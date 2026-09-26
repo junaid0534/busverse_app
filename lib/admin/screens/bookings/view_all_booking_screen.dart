@@ -52,46 +52,22 @@ class _ViewAllBookingScreenState extends State<ViewAllBookingScreen> {
     setState(() => isLoading = true);
 
     try {
-      final db = await DBHelper.instance.database;
+      List<Map<String, dynamic>> rows = await DBHelper.instance.getAllBookingsAdmin();
 
-      String query = '''
-        SELECT b.id as bookingId, b.userId, b.busId, b.seatNumber, b.gender, b.bookingDate, b.status,
-               u.firstName, u.lastName, u.cnic as userCnic, u.phone as userPhone, u.email as userEmail,
-               buses.busName, buses.busNumber, buses.busClass, buses.fare, buses.routeVia,
-               buses.fromCity, buses.toCity, buses.time, buses.date as busDate
-        FROM bookings b
-        LEFT JOIN users u ON b.userId = u.id
-        LEFT JOIN buses ON b.busId = buses.id
-        WHERE 1=1
-      ''';
-
-      List<dynamic> args = [];
       final effectiveBusId = specificBusId ?? widget.busId;
-
       if (effectiveBusId != null) {
-        query += ' AND b.busId = ?';
-        args.add(effectiveBusId);
+        rows = rows.where((b) => b['busId'] == effectiveBusId).toList();
       }
-
       if (widget.fromCity != null && widget.fromCity!.isNotEmpty) {
-        query += ' AND buses.fromCity = ?';
-        args.add(widget.fromCity);
+        rows = rows.where((b) => (b['fromCity'] ?? '').toString().toLowerCase().contains(widget.fromCity!.toLowerCase())).toList();
       }
-
       if (widget.toCity != null && widget.toCity!.isNotEmpty) {
-        query += ' AND buses.toCity = ?';
-        args.add(widget.toCity);
+        rows = rows.where((b) => (b['toCity'] ?? '').toString().toLowerCase().contains(widget.toCity!.toLowerCase())).toList();
       }
-
       if (widget.date != null && widget.date!.isNotEmpty) {
-        query += ' AND (buses.date = ? OR b.bookingDate = ?)';
-        args.add(widget.date);
-        args.add(widget.date);
+        rows = rows.where((b) => (b['travelDate'] == widget.date || b['bookingDate'] == widget.date)).toList();
       }
 
-      query += ' ORDER BY b.id DESC';
-
-      final rows = await db.rawQuery(query, args);
       final payments = await DBHelper.instance.getPayments();
       final terminalBookings = await DBHelper.instance.getTerminalBookings();
 
