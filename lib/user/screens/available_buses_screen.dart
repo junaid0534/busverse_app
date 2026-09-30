@@ -292,7 +292,7 @@ class _AnimatedBusCardState extends State<_AnimatedBusCard>
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -349,13 +349,13 @@ class _AnimatedBusCardState extends State<_AnimatedBusCard>
                         gradient: LinearGradient(
                           colors: [
                             const Color(0xFF1E3C72),
-                            primaryBlue.withOpacity(_glowAnimation.value),
+                            primaryBlue.withValues(alpha: _glowAnimation.value),
                           ],
                         ),
                         borderRadius: BorderRadius.circular(5),
                         boxShadow: [
                           BoxShadow(
-                            color: primaryBlue.withOpacity(_glowAnimation.value * 0.3),
+                            color: primaryBlue.withValues(alpha: _glowAnimation.value * 0.3),
                             blurRadius: 4,
                             offset: const Offset(0, 1),
                           ),
@@ -391,7 +391,7 @@ class _AnimatedBusCardState extends State<_AnimatedBusCard>
                             borderRadius: BorderRadius.circular(5),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFFFF3366).withOpacity(0.35),
+                                color: const Color(0xFFFF3366).withValues(alpha: 0.35),
                                 blurRadius: 4,
                                 offset: const Offset(0, 1),
                               ),
@@ -581,8 +581,8 @@ class _AnimatedBusCardState extends State<_AnimatedBusCard>
                   padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                   decoration: BoxDecoration(
                     color: isSoldOut
-                        ? Colors.redAccent.withOpacity(0.1)
-                        : primaryBlue.withOpacity(0.08),
+                        ? Colors.redAccent.withValues(alpha: 0.1)
+                        : primaryBlue.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(5),
                   ),
                   child: Row(

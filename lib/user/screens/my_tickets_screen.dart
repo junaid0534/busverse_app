@@ -134,9 +134,11 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProv
               'time': bus?['time'] ?? "Scheduled",
               'busClass': bus?['busClass'] ?? bus?['bus_class'] ?? "Executive",
               'busNumber': bus?['busNumber'] ?? bus?['bus_number'] ?? "BV-Fleet",
-              'fare': (p['amount'] != null && (p['amount'] as num) > 0)
-                  ? (p['amount'] as num).toDouble()
-                  : ((bus?['fare'] is num) ? (bus?['fare'] as num).toDouble() : 0.0),
+              'fare': (bus?['fare'] is num)
+                  ? (bus?['fare'] as num).toDouble()
+                  : ((p['amount'] != null && (p['amount'] as num) > 0)
+                      ? (p['amount'] as num).toDouble()
+                      : 0.0),
               'passengerName': (p['passengerName'] != null && p['passengerName'].toString().trim().isNotEmpty)
                   ? p['passengerName']
                   : defaultUserName,
@@ -389,7 +391,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProv
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -788,7 +790,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with SingleTickerProv
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: primaryBlue.withOpacity(0.08),
+                color: primaryBlue.withValues(alpha: 0.08),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.confirmation_number_outlined, size: 48, color: primaryBlue),

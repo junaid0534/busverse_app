@@ -438,36 +438,85 @@ class SupabaseService {
   Future<List<Map<String, dynamic>>> getBookedSeats(dynamic busId) async {
     try {
       final id = busId is int ? busId : int.tryParse(busId.toString()) ?? 0;
+      final List<Map<String, dynamic>> allBooked = [];
+      final Set<String> seenSeats = {};
+
+      // 1. Online App Bookings (from bookings table)
+      try {
       dynamic response;
       try {
         response = await client
             .from('bookings')
             .select('seat_number, gender')
-            .eq('bus_id', id)
-            .order('seat_number', ascending: true);
+              .eq('bus_id', id);
       } catch (_) {
-        try {
           response = await client
               .from('bookings')
               .select('seatNumber, gender')
-              .eq('busId', id)
-              .order('seatNumber', ascending: true);
-        } catch (_) {
-          response = await client
-              .from('bookings')
-              .select()
-              .eq('bus_id', id);
+              .eq('busId', id);
         }
-      }
 
-      return (response as List).map<Map<String, dynamic>>((e) {
-        final seat = (e['seat_number'] ?? e['seatNumber'] ?? '').toString().trim();
-        return {
-          'seatNumber': seat,
-          'seat_number': seat,
-          'gender': e['gender'] ?? 'M',
-        };
-      }).toList();
+        if (response is List) {
+          for (var e in response) {
+            final seat = (e['seat_number'] ?? e['seatNumber'] ?? '').toString().trim();
+            if (seat.isNotEmpty && !seenSeats.contains(seat)) {
+              seenSeats.add(seat);
+              final rawG = (e['gender'] ?? 'M').toString().toUpperCase();
+              allBooked.add({
+                'seatNumber': seat,
+                'seat_number': seat,
+                'gender': rawG.startsWith('F') ? 'F' : 'M',
+              });
+            }
+          }
+        }
+      } catch (_) {}
+
+      // 2. Counter Terminal Bookings (from dedicated terminal_bookings table)
+      try {
+        dynamic tRes;
+        try {
+          tRes = await client.from('terminal_bookings').select('*');
+        } catch (_) {}
+
+        if (tRes is List) {
+          for (var row in tRes) {
+            final rowBusId = int.tryParse((row['busId'] ?? row['bus_id'] ?? '').toString());
+            if (id > 0 && rowBusId != null && rowBusId > 0 && rowBusId != id) continue;
+
+            final seatVal = (row['seatNumber'] ?? row['seat_number'] ?? row['seatNumbers'] ?? row['seat_numbers'] ?? row['seats'] ?? '').toString().trim();
+            final rawGender = (row['gender'] ?? row['seatGender'] ?? row['seat_genders'] ?? 'M').toString().trim().toUpperCase();
+            final defaultG = rawGender.startsWith('F') ? 'F' : 'M';
+
+            // Check if gender map is embedded in seat_genders
+            final gendersRaw = (row['seatGenders'] ?? row['seat_genders'] ?? '').toString();
+            final Map<String, String> gMap = {};
+            if (gendersRaw.isNotEmpty) {
+              for (var part in gendersRaw.split(',')) {
+                final kv = part.trim().split(':');
+                if (kv.length == 2) {
+                  gMap[kv[0].trim()] = kv[1].trim().toUpperCase().startsWith('F') ? 'F' : 'M';
+                }
+              }
+            }
+
+            for (var s in seatVal.split(',')) {
+              final seat = s.trim();
+              if (seat.isNotEmpty && !seenSeats.contains(seat)) {
+                seenSeats.add(seat);
+                final g = gMap[seat] ?? defaultG;
+                allBooked.add({
+                  'seatNumber': seat,
+                  'seat_number': seat,
+                  'gender': g,
+                });
+              }
+            }
+          }
+        }
+      } catch (_) {}
+
+      return allBooked;
     } catch (e) {
       debugPrint('Error fetching booked seats: $e');
       return [];
@@ -648,6 +697,7 @@ class SupabaseService {
   }
 
   Future<List<Map<String, dynamic>>> getAllBookingsAdmin({int? limit, int? busId}) async {
+    final List<Map<String, dynamic>> combined = [];
     try {
       dynamic query = client.from('bookings').select('*, buses(*)');
       if (busId != null && busId > 0) {
@@ -669,7 +719,7 @@ class SupabaseService {
         }
       } catch (_) {}
 
-      final list = (response as List).map<Map<String, dynamic>>((row) {
+      final onlineList = (response as List).map<Map<String, dynamic>>((row) {
         final bus = row['buses'] as Map<String, dynamic>?;
         final uEmail = (row['user_email'] ?? '').toString().toLowerCase();
         final uUid = (row['firebase_uid'] ?? '').toString();
@@ -699,13 +749,68 @@ class SupabaseService {
           'lastName': ln,
           'cnic': user?['cnic'] ?? '',
           'phone': user?['phone'] ?? '',
+          'channel': 'Online App',
+          'isTerminal': false,
         };
       }).toList();
-      return list;
+
+      combined.addAll(onlineList);
     } catch (e) {
-      debugPrint('Error fetching all bookings: $e');
-      return [];
+      debugPrint('Error fetching online bookings: $e');
     }
+
+    // Also fetch Terminal Bookings
+    try {
+      final terminalList = await getTerminalBookings(busId: busId);
+      for (var tb in terminalList) {
+        final bId = tb['bus_id'] ?? tb['busId'];
+        final seatsStr = (tb['seatNumber'] ?? tb['seat_number'] ?? tb['seatNumbers'] ?? tb['seat_numbers'] ?? tb['seats'] ?? '').toString();
+        final pName = (tb['passenger_name'] ?? tb['passengerName'] ?? 'Counter Passenger').toString();
+        final pPhone = (tb['passenger_phone'] ?? tb['passengerPhone'] ?? '').toString();
+        final pCnic = (tb['passenger_cnic'] ?? tb['passengerCnic'] ?? '').toString();
+        final fare = (tb['fare'] as num?)?.toDouble() ?? 0.0;
+        final tCity = (tb['terminal_city'] ?? tb['terminalCity'] ?? '').toString();
+        final tName = (tb['terminal_name'] ?? tb['terminalName'] ?? '').toString();
+        final aName = (tb['agent_name'] ?? tb['agentName'] ?? '').toString();
+        final date = (tb['booking_date'] ?? tb['bookingDate'] ?? tb['created_at'] ?? '').toString();
+
+        combined.add({
+          'bookingId': tb['id'],
+          'seatNumber': seatsStr,
+          'passengerGender': 'Counter',
+          'bookingDate': date,
+          'status': tb['status'] ?? 'Confirmed',
+          'userId': 0,
+          'busId': bId,
+          'busName': tb['busName'] ?? 'BusVerse Express',
+          'busNumber': tb['busNumber'] ?? 'BV-Fleet',
+          'fromCity': tb['fromCity'] ?? tCity,
+          'toCity': tb['toCity'] ?? '',
+          'routeVia': tb['routeVia'] ?? '',
+          'travelDate': tb['travelDate'] ?? date,
+          'time': tb['time'] ?? '',
+          'busClass': tb['busClass'] ?? 'Executive',
+          'fare': fare,
+          'firstName': pName,
+          'lastName': '',
+          'passengerName': pName,
+          'passengerPhone': pPhone,
+          'passengerCnic': pCnic,
+          'cnic': pCnic,
+          'phone': pPhone,
+          'channel': 'POS Counter',
+          'isTerminal': true,
+          'terminalCity': tCity,
+          'terminalName': tName,
+          'agentName': aName,
+          'terminal': tb,
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching terminal bookings in getAllBookingsAdmin: $e');
+    }
+
+    return combined;
   }
 
   Future<bool> deleteBooking(int bookingId) async {
@@ -861,49 +966,33 @@ class SupabaseService {
       List<String> seats = [];
       if (seatNumbers is List) {
         seats = seatNumbers.map((s) => s.toString().trim()).toList();
+      } else if (seatNumbers is String) {
+        seats = seatNumbers.split(',').map((s) => s.trim()).toList();
       }
+      if (seats.isEmpty) return 0;
 
-      final seatNumbersStr = seats.join(', ');
-      final seatGendersStr = seats.map((s) {
+      final nowIso = DateTime.now().toIso8601String();
+      final double farePerSeat = seats.isNotEmpty ? (totalAmount / seats.length) : totalAmount;
+
+      int firstBookingId = DateTime.now().millisecondsSinceEpoch % 100000;
+
+      // 1. Insert each seat row into terminal_bookings
+      for (final seat in seats) {
         String g = 'M';
         if (seatGenders is Map) {
-          final val = (seatGenders[s] ?? seatGenders[int.tryParse(s)] ?? 'M').toString();
-          g = val.startsWith('F') || val.startsWith('f') ? 'F' : 'M';
+          final val = (seatGenders[seat] ?? seatGenders[int.tryParse(seat)] ?? 'M').toString();
+          g = val.toUpperCase().startsWith('F') ? 'F' : 'M';
         }
-        return "$s:$g";
-      }).join(', ');
 
-      int terminalBookingId = 1;
-      final nowIso = DateTime.now().toIso8601String();
-
-      try {
-        final res = await client.from('terminal_bookings').insert({
-          'bus_id': busId,
-          'seat_numbers': seatNumbersStr,
-          'seat_genders': seatGendersStr,
-          'passenger_name': passengerName,
-          'passenger_phone': passengerPhone,
-          'passenger_cnic': passengerCnic,
-          'fare': totalAmount,
-          'payment_method': paymentMethod,
-          'terminal_city': terminalCity,
-          'terminal_name': terminalName,
-          'agent_name': agentName,
-          'booking_date': bookingDate,
-          'status': 'Confirmed',
-          'created_at': nowIso,
-        }).select('id').maybeSingle();
-        terminalBookingId = (res?['id'] as num?)?.toInt() ?? 1;
-      } catch (_) {
         try {
-          final res = await client.from('terminal_bookings').insert({
+          final row = {
             'busId': busId,
-            'seatNumbers': seatNumbersStr,
-            'seatGenders': seatGendersStr,
+            'seatNumber': seat,
+            'gender': g,
             'passengerName': passengerName,
             'passengerPhone': passengerPhone,
             'passengerCnic': passengerCnic,
-            'fare': totalAmount,
+            'fare': farePerSeat,
             'paymentMethod': paymentMethod,
             'terminalCity': terminalCity,
             'terminalName': terminalName,
@@ -911,43 +1000,33 @@ class SupabaseService {
             'bookingDate': bookingDate,
             'status': 'Confirmed',
             'createdAt': nowIso,
-          }).select('id').maybeSingle();
-          terminalBookingId = (res?['id'] as num?)?.toInt() ?? 1;
-        } catch (_) {}
-      }
-
-      // Also book seats into main bookings table
-      for (final seat in seats) {
-        String gender = 'Male';
-        if (seatGenders is Map) {
-          final val = (seatGenders[seat] ?? seatGenders[int.tryParse(seat)] ?? 'Male').toString();
-          gender = val.toLowerCase().contains('female') ? 'Female' : 'Male';
+          };
+          final res = await client.from('terminal_bookings').insert(row).select('id').maybeSingle();
+          if (res != null && res['id'] != null) {
+            firstBookingId = (res['id'] as num).toInt();
+          }
+        } catch (e1) {
+          debugPrint('terminal_bookings insert error for seat $seat: $e1');
         }
-        await bookSeats(
-          busId: busId,
-          seats: [seat],
-          gender: gender,
-          date: bookingDate,
-          userId: 0,
-          userEmail: "counter.$passengerPhone@busverse.pos",
-        );
       }
 
-      // Also record payment
-      await insertPayment(
-        busId: busId,
-        seats: seatNumbersStr,
-        passengerName: passengerName,
-        passengerEmail: "counter.$passengerPhone@busverse.pos",
-        paymentMethod: paymentMethod,
-        accountNumber: "COUNTER-POS",
-        date: bookingDate,
-        amount: totalAmount,
-        passengerCnic: passengerCnic,
-        passengerPhone: passengerPhone,
-      );
+      // 2. Record terminal payment in dedicated terminal_payments table
+      try {
+        await client.from('terminal_payments').insert({
+          'booking_id': firstBookingId,
+          'amount': totalAmount,
+          'payment_method': paymentMethod,
+          'account_number': 'COUNTER-POS',
+          'terminal_city': terminalCity,
+          'terminal_name': terminalName,
+          'agent_name': agentName,
+          'created_at': nowIso,
+        });
+      } catch (pe) {
+        debugPrint('terminal_payments insert error: $pe');
+      }
 
-      return terminalBookingId;
+      return firstBookingId;
     } catch (e) {
       debugPrint('Error insertTerminalBooking: $e');
       return 0;
@@ -986,23 +1065,35 @@ class SupabaseService {
 
   Future<List<Map<String, dynamic>>> getTerminalBookings({int? busId, String? terminalCity}) async {
     try {
-      dynamic query = client.from('terminal_bookings').select('*');
+      dynamic res;
+      try {
+        res = await client.from('terminal_bookings').select('*').order('id', ascending: false);
+      } catch (_) {
+        try {
+          res = await client.from('terminal_bookings').select('*');
+        } catch (_) {
+          return [];
+        }
+      }
+
+      if (res == null || res is! List) return [];
+
+      List<Map<String, dynamic>> list = List<Map<String, dynamic>>.from(res);
+
       if (busId != null && busId > 0) {
-        try {
-          query = query.eq('bus_id', busId);
-        } catch (_) {
-          query = query.eq('busId', busId);
-        }
+        list = list.where((m) {
+          final bId = int.tryParse((m['bus_id'] ?? m['busId'] ?? '').toString());
+          return bId == busId;
+        }).toList();
       }
+
       if (terminalCity != null && terminalCity.isNotEmpty && terminalCity.toLowerCase() != 'all') {
-        try {
-          query = query.ilike('terminal_city', '%$terminalCity%');
-        } catch (_) {
-          query = query.ilike('terminalCity', '%$terminalCity%');
-        }
+        final target = terminalCity.trim().toLowerCase();
+        list = list.where((m) {
+          final c = (m['terminal_city'] ?? m['terminalCity'] ?? '').toString().trim().toLowerCase();
+          return c.contains(target) || target.contains(c);
+        }).toList();
       }
-      final res = await query.order('id', ascending: false);
-      final list = List<Map<String, dynamic>>.from(res);
 
       try {
         final busesList = await getAllBuses();
@@ -1070,7 +1161,7 @@ class SupabaseService {
       // 1. Try dedicated terminals table
       try {
         final resTerminals = await client.from('terminals').select().order('id', ascending: true);
-        if (resTerminals is List && resTerminals.isNotEmpty) {
+        if (resTerminals.isNotEmpty) {
           return (resTerminals).map<Map<String, dynamic>>((t) {
             final m = Map<String, dynamic>.from(t);
             m['terminalCity'] = m['terminal_city'] ?? m['city'] ?? m['terminalCity'] ?? '';
@@ -1208,7 +1299,7 @@ class SupabaseService {
     try {
       try {
         final res = await client.from('drivers').select().order('id', ascending: true);
-        if (res is List && res.isNotEmpty) {
+        if (res.isNotEmpty) {
           return res.map<Map<String, dynamic>>((row) => _normalizeUserMap(row)).toList();
         }
       } catch (e1) {
@@ -1735,7 +1826,7 @@ class SupabaseService {
         }
       }
       if (bookingsRes is List) {
-        totalBookings += bookingsRes.length;
+        totalBookings = bookingsRes.length;
         for (var b in bookingsRes) {
           final d = (b['booking_date'] ?? b['bookingDate'] ?? '').toString();
           if (d.startsWith(todayStr)) todayBookings++;
@@ -1745,26 +1836,21 @@ class SupabaseService {
       debugPrint('Note: Error fetching bookings count: $e');
     }
 
-    // Also add terminal_bookings if present
-    try {
-      final tBookingsRes = await client.from('terminal_bookings').select('id, booking_date, fare');
-      if (tBookingsRes is List) {
-        totalBookings += tBookingsRes.length;
-        for (var tb in tBookingsRes) {
-          final d = (tb['booking_date'] ?? tb['bookingDate'] ?? '').toString();
-          if (d.startsWith(todayStr)) todayBookings++;
-          totalRevenue += (tb['fare'] as num?)?.toDouble() ?? 0.0;
-        }
-      }
-    } catch (_) {}
-
-    // 5. Payments / Revenue
+    // 5. Payments / Revenue (Sum payments table without duplicate additions)
     try {
       final paymentsRes = await client.from('payments').select('amount');
-      if (paymentsRes is List) {
+      if (paymentsRes.isNotEmpty) {
         for (var p in paymentsRes) {
           totalRevenue += (p['amount'] as num?)?.toDouble() ?? 0.0;
         }
+      } else {
+        // Fallback if payments table is empty
+        try {
+          final tBookingsRes = await client.from('terminal_bookings').select('fare');
+        for (var tb in tBookingsRes) {
+          totalRevenue += (tb['fare'] as num?)?.toDouble() ?? 0.0;
+        }
+        } catch (_) {}
       }
     } catch (e) {
       debugPrint('Note: Error fetching payments revenue: $e');
@@ -2216,8 +2302,11 @@ class SupabaseService {
     String? userEmail,
   }) async {
     try {
+      final email = (userEmail != null && userEmail.isNotEmpty)
+          ? userEmail
+          : (FirebaseAuth.instance.currentUser?.email ?? 'User#${userId ?? 0}');
       final res = await client.from('feedback').insert({
-        'user_email': userEmail ?? '',
+        'user_email': email,
         'message': message,
         'date': DateTime.now().toIso8601String().split('T')[0],
       }).select('id').maybeSingle();
@@ -2244,8 +2333,11 @@ class SupabaseService {
     String? userEmail,
   }) async {
     try {
+      final email = (userEmail != null && userEmail.isNotEmpty)
+          ? userEmail
+          : (FirebaseAuth.instance.currentUser?.email ?? 'User#${userId ?? 0}');
       final res = await client.from('complain').insert({
-        'user_email': userEmail ?? '',
+        'user_email': email,
         'message': message,
         'date': DateTime.now().toIso8601String().split('T')[0],
       }).select('id').maybeSingle();
@@ -2274,6 +2366,162 @@ class SupabaseService {
   Future<bool> addComplain(String userEmail, String message) async {
     await insertComplain(userId: 0, message: message, userEmail: userEmail);
     return true;
+  }
+
+  Future<bool> replyToFeedback({
+    required int feedbackId,
+    required String replyText,
+    String? userEmail,
+    String? originalMessage,
+  }) async {
+    try {
+      final now = DateTime.now().toIso8601String();
+      final cleanReply = replyText.trim();
+      if (cleanReply.isEmpty || cleanReply.toLowerCase() == 'null') return false;
+
+      // 1. Fetch current row from Supabase to ensure accurate base message & user email
+      String origMsg = (originalMessage ?? '').trim();
+      String targetEmail = (userEmail ?? '').trim();
+      try {
+        final row = await client.from('feedback').select('*').eq('id', feedbackId).maybeSingle();
+        if (row != null) {
+          final dbMsg = (row['message'] ?? '').toString().trim();
+          if (dbMsg.isNotEmpty && dbMsg.toLowerCase() != 'null') origMsg = dbMsg;
+          if (targetEmail.isEmpty) {
+            targetEmail = (row['user_email'] ?? row['userEmail'] ?? row['email'] ?? '').toString().trim();
+          }
+        }
+      } catch (_) {}
+
+      // Clean out any existing admin response tags
+      if (origMsg.contains('\n[Admin Response]:')) {
+        origMsg = origMsg.split('\n[Admin Response]:').first.trim();
+      }
+      if (origMsg.toLowerCase() == 'null') origMsg = '';
+
+      final updatedMsg = origMsg.isNotEmpty
+          ? "$origMsg\n[Admin Response]: $cleanReply"
+          : cleanReply;
+
+      // 2. Always update message field (ensures it works 100% reliably in all environments)
+      try {
+        await client.from('feedback').update({
+          'message': updatedMsg,
+        }).eq('id', feedbackId);
+      } catch (e) {
+        debugPrint("Error updating message in feedback: $e");
+      }
+
+      // 3. Also try updating dedicated columns if they exist
+      try {
+        await client.from('feedback').update({
+          'admin_reply': cleanReply,
+          'status': 'Replied',
+          'replied_at': now,
+        }).eq('id', feedbackId);
+      } catch (_) {
+        try {
+          await client.from('feedback').update({
+            'adminReply': cleanReply,
+            'status': 'Replied',
+          }).eq('id', feedbackId);
+        } catch (_) {}
+      }
+
+      // 4. Send Notification to User
+      if (targetEmail.isNotEmpty && !targetEmail.startsWith('User#') && targetEmail.toLowerCase() != 'null') {
+        await insertNotification(
+          userEmail: targetEmail,
+          title: "Response to Your Review",
+          body: "Admin: \"$cleanReply\"",
+          type: "feedback",
+        );
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint("Error replying to feedback: $e");
+      return false;
+    }
+  }
+
+  Future<bool> replyToComplain({
+    required int complainId,
+    required String replyText,
+    String status = 'Resolved',
+    String? userEmail,
+    String? originalMessage,
+  }) async {
+    try {
+      final now = DateTime.now().toIso8601String();
+      final cleanReply = replyText.trim();
+      if (cleanReply.isEmpty || cleanReply.toLowerCase() == 'null') return false;
+
+      // 1. Fetch current row from Supabase
+      String origMsg = (originalMessage ?? '').trim();
+      String targetEmail = (userEmail ?? '').trim();
+      try {
+        final row = await client.from('complain').select('*').eq('id', complainId).maybeSingle();
+        if (row != null) {
+          final dbMsg = (row['message'] ?? '').toString().trim();
+          if (dbMsg.isNotEmpty && dbMsg.toLowerCase() != 'null') origMsg = dbMsg;
+          if (targetEmail.isEmpty) {
+            targetEmail = (row['user_email'] ?? row['userEmail'] ?? row['email'] ?? '').toString().trim();
+          }
+        }
+      } catch (_) {}
+
+      // Clean out existing admin response tags
+      if (origMsg.contains('\n[Admin Response')) {
+        final idx = origMsg.indexOf('\n[Admin Response');
+        origMsg = origMsg.substring(0, idx).trim();
+      }
+      if (origMsg.toLowerCase() == 'null') origMsg = '';
+
+      final updatedMsg = origMsg.isNotEmpty
+          ? "$origMsg\n[Admin Response - $status]: $cleanReply"
+          : cleanReply;
+
+      // 2. Always update message field (works with any schema)
+      try {
+        await client.from('complain').update({
+          'message': updatedMsg,
+        }).eq('id', complainId);
+      } catch (e) {
+        debugPrint("Error updating message in complain: $e");
+      }
+
+      // 3. Also try updating dedicated columns if they exist
+      try {
+        await client.from('complain').update({
+          'admin_reply': cleanReply,
+          'status': status,
+          'replied_at': now,
+        }).eq('id', complainId);
+      } catch (_) {
+        try {
+          await client.from('complain').update({
+            'adminReply': cleanReply,
+            'status': status,
+          }).eq('id', complainId);
+        } catch (_) {}
+      }
+
+      // 4. Send Notification to User
+      if (targetEmail.isNotEmpty && !targetEmail.startsWith('User#') && targetEmail.toLowerCase() != 'null') {
+        await insertNotification(
+          userEmail: targetEmail,
+          title: "Complaint Update: $status",
+          body: "Admin response: \"$cleanReply\"",
+          type: "complaint",
+        );
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint("Error replying to complain: $e");
+      return false;
+    }
   }
 
   Future<Map<String, dynamic>?> getUserProfile(String firebaseUid) async {

@@ -368,11 +368,39 @@ class DBHelper {
 
   Future<List<Map<String, dynamic>>> getFeedbacks() async => await _sb.getFeedbacks();
   Future<List<Map<String, dynamic>>> getAllFeedbacks() async => await _sb.getAllFeedbacks();
+  Future<bool> replyToFeedback({
+    required int feedbackId,
+    required String replyText,
+    String? userEmail,
+    String? originalMessage,
+  }) async =>
+      await _sb.replyToFeedback(
+        feedbackId: feedbackId,
+        replyText: replyText,
+        userEmail: userEmail,
+        originalMessage: originalMessage,
+      );
+
   Future<int> insertComplain({required dynamic userId, required String message, String? userEmail}) async =>
       await _sb.insertComplain(userId: userId, message: message, userEmail: userEmail);
 
   Future<List<Map<String, dynamic>>> getComplains() async => await _sb.getComplains();
   Future<List<Map<String, dynamic>>> getAllComplains() async => await _sb.getAllComplains();
+  Future<bool> replyToComplain({
+    required int complainId,
+    required String replyText,
+    String status = 'Resolved',
+    String? userEmail,
+    String? originalMessage,
+  }) async =>
+      await _sb.replyToComplain(
+        complainId: complainId,
+        replyText: replyText,
+        status: status,
+        userEmail: userEmail,
+        originalMessage: originalMessage,
+      );
+
   Future<void> insertSupportMessage({required String type, required String message}) async {}
 
   // ============================================================

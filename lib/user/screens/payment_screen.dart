@@ -408,7 +408,7 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
                     borderRadius: BorderRadius.circular(8),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
+                        color: Colors.black.withValues(alpha: 0.04),
                         blurRadius: 4,
                       ),
                     ],
@@ -438,7 +438,7 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
               border: Border.all(color: const Color(0xFFE2E8F0)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.02),
+                  color: Colors.black.withValues(alpha: 0.02),
                   blurRadius: 8,
                   offset: const Offset(0, 3),
                 ),
@@ -455,7 +455,7 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
                         Container(
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
-                            color: primaryBlue.withOpacity(0.1),
+                            color: primaryBlue.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Icon(Icons.directions_bus_rounded, color: primaryBlue, size: 16),
@@ -852,7 +852,7 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
                 backgroundColor: primaryBlue,
                 foregroundColor: Colors.white,
                 elevation: 2,
-                shadowColor: primaryBlue.withOpacity(0.4),
+                shadowColor: primaryBlue.withValues(alpha: 0.4),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               child: _isProcessing
@@ -1101,10 +1101,10 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: (isJazz ? const Color(0xFFDC2626) : const Color(0xFF059669)).withOpacity(0.08),
+                color: (isJazz ? const Color(0xFFDC2626) : const Color(0xFF059669)).withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: (isJazz ? const Color(0xFFDC2626) : const Color(0xFF059669)).withOpacity(0.2),
+                  color: (isJazz ? const Color(0xFFDC2626) : const Color(0xFF059669)).withValues(alpha: 0.2),
                 ),
               ),
               child: Row(
@@ -1204,7 +1204,7 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF1E3A8A).withOpacity(0.35),
+            color: const Color(0xFF1E3A8A).withValues(alpha: 0.35),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -1334,7 +1334,7 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: primaryBlue.withOpacity(0.1),
+                        color: primaryBlue.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
                       child: const SizedBox(
@@ -1553,7 +1553,7 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
           ),
           boxShadow: [
             BoxShadow(
-              color: isSelected ? primaryBlue.withOpacity(0.08) : Colors.black.withOpacity(0.02),
+              color: isSelected ? primaryBlue.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.02),
               blurRadius: 6,
               offset: const Offset(0, 2),
             ),
@@ -1564,7 +1564,7 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
+                color: color.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(icon, color: color, size: 20),
@@ -1588,7 +1588,7 @@ class _PaymentScreenState extends State<PaymentScreen> with TickerProviderStateM
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: badgeColor.withOpacity(0.1),
+                          color: badgeColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(

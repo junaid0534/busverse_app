@@ -261,7 +261,7 @@ class _ManageDriversScreenState extends State<ManageDriversScreen> {
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -276,7 +276,7 @@ class _ManageDriversScreenState extends State<ManageDriversScreen> {
               // Avatar
               CircleAvatar(
                 radius: 22,
-                backgroundColor: primaryBlue.withOpacity(0.1),
+                backgroundColor: primaryBlue.withValues(alpha: 0.1),
                 child: Text(
                   name.isNotEmpty ? name[0].toUpperCase() : 'D',
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: primaryBlue),
@@ -303,7 +303,7 @@ class _ManageDriversScreenState extends State<ManageDriversScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: (isActive ? emeraldGreen : roseDanger).withOpacity(0.12),
+                  color: (isActive ? emeraldGreen : roseDanger).withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -341,7 +341,7 @@ class _ManageDriversScreenState extends State<ManageDriversScreen> {
           const SizedBox(height: 12),
           Row(
             children: [
-              Icon(Icons.phone_rounded, size: 14, color: subText),
+              const Icon(Icons.phone_rounded, size: 14, color: subText),
               const SizedBox(width: 6),
               Text(phone, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: darkText)),
               const Spacer(),

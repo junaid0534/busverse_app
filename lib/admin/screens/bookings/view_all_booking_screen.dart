@@ -71,23 +71,15 @@ class _ViewAllBookingScreenState extends State<ViewAllBookingScreen> {
       final payments = await DBHelper.instance.getPayments();
       final terminalBookings = await DBHelper.instance.getTerminalBookings();
 
-      final enriched = rows.map((r) {
-        final seatStr = r['seatNumber']?.toString() ?? '';
+      final List<Map<String, dynamic>> enriched = [];
+      final Set<String> addedKeys = {};
+
+      for (final r in rows) {
+        final seatStr = (r['seatNumber'] ?? '').toString();
         final int busId = r['busId'] is int ? r['busId'] as int : int.tryParse(r['busId']?.toString() ?? '') ?? 0;
-        final int seatNum = int.tryParse(seatStr) ?? 0;
+        final bool isAlreadyTerminal = r['isTerminal'] == true || (r['channel'] ?? '').toString().contains('Counter');
 
-        // 1. Check if there's a match in terminal_bookings
-        Map<String, dynamic>? matchedTerminal;
-        for (final tb in terminalBookings) {
-          final tbBusId = tb['busId'] is int ? tb['busId'] as int : int.tryParse(tb['busId']?.toString() ?? '') ?? 0;
-          final tbSeat = tb['seatNumber']?.toString() ?? '';
-          if (tbBusId == busId && (tbSeat == seatStr || tb['seatNumber'] == seatNum)) {
-            matchedTerminal = tb;
-            break;
-          }
-        }
-
-        // 2. Check if there's a match in payments
+        // Check if there's a match in payments
         Map<String, dynamic>? matchedPayment;
         for (final p in payments) {
           if (p['busId'] == r['busId']) {
@@ -99,67 +91,82 @@ class _ViewAllBookingScreenState extends State<ViewAllBookingScreen> {
           }
         }
 
-        // Extract clean passenger info
-        String finalName = "";
-        String finalPhone = "";
-        String finalCnic = "";
-        bool isTerminal = false;
-        String channel = "Online App";
-        String terminalCity = "";
-        String terminalName = "";
-        String agentName = "";
-
-        if (matchedTerminal != null) {
-          finalName = (matchedTerminal['passengerName'] ?? '').toString().trim();
-          finalPhone = (matchedTerminal['passengerPhone'] ?? '').toString().trim();
-          finalCnic = (matchedTerminal['passengerCnic'] ?? '').toString().trim();
-          terminalCity = (matchedTerminal['terminalCity'] ?? '').toString().trim();
-          terminalName = (matchedTerminal['terminalName'] ?? '').toString().trim();
-          agentName = (matchedTerminal['agentName'] ?? '').toString().trim();
-          isTerminal = true;
-          channel = "POS Counter";
-        } else if (matchedPayment != null && (matchedPayment['passengerName'] != null && matchedPayment['passengerName'].toString().trim().isNotEmpty)) {
-          finalName = (matchedPayment['passengerName'] ?? '').toString().trim();
-          finalPhone = (matchedPayment['passengerPhone'] ?? matchedPayment['accountNumber'] ?? '').toString().trim();
-          finalCnic = (matchedPayment['passengerCnic'] ?? '').toString().trim();
-          if (matchedPayment['accountNumber'] == "COUNTER-POS" || r['userId'] == 0) {
-            isTerminal = true;
-            channel = "POS Counter";
-          }
-        }
+        String finalName = (r['passengerName'] ?? r['firstName'] ?? '').toString().trim();
+        String finalPhone = (r['passengerPhone'] ?? r['phone'] ?? '').toString().trim();
+        String finalCnic = (r['passengerCnic'] ?? r['cnic'] ?? '').toString().trim();
+        String channel = isAlreadyTerminal ? "POS Counter" : (r['channel'] ?? "Online App");
 
         if (finalName.isEmpty) {
-          final userFullName = "${r['firstName'] ?? ''} ${r['lastName'] ?? ''}".trim();
-          if (userFullName.isNotEmpty) {
-            finalName = userFullName;
-          } else if (r['userEmail'] != null && r['userEmail'].toString().trim().isNotEmpty) {
-            finalName = r['userEmail'].toString().trim();
-          } else {
-            finalName = isTerminal ? "Counter Passenger" : "Guest Passenger";
-          }
+          finalName = isAlreadyTerminal ? "Counter Passenger" : "Guest Passenger";
         }
 
-        if (finalPhone.isEmpty) {
-          finalPhone = (r['userPhone'] ?? '').toString().trim();
-        }
-        if (finalCnic.isEmpty) {
-          finalCnic = (r['userCnic'] ?? '').toString().trim();
-        }
-
-        return {
+        final item = {
           ...r,
           'passengerName': finalName,
           'passengerPhone': finalPhone,
           'passengerCnic': finalCnic,
-          'isTerminal': isTerminal,
+          'isTerminal': isAlreadyTerminal,
           'channel': channel,
-          'terminalCity': terminalCity,
-          'terminalName': terminalName,
-          'agentName': agentName,
+          'terminalCity': r['terminalCity'] ?? '',
+          'terminalName': r['terminalName'] ?? '',
+          'agentName': r['agentName'] ?? '',
           'payment': matchedPayment,
-          'terminal': matchedTerminal,
         };
-      }).toList();
+
+        final key = "${r['bookingId']}_${busId}_$seatStr";
+        if (!addedKeys.contains(key)) {
+          addedKeys.add(key);
+          enriched.add(item);
+        }
+      }
+
+      // Add any standalone terminal bookings if not already in rows
+      for (final tb in terminalBookings) {
+        final bId = tb['bus_id'] ?? tb['busId'];
+        final seatsStr = (tb['seatNumber'] ?? tb['seat_number'] ?? tb['seatNumbers'] ?? tb['seat_numbers'] ?? tb['seats'] ?? '').toString();
+        final key = "terminal_${tb['id']}_${bId}_$seatsStr";
+        if (!addedKeys.contains(key)) {
+          addedKeys.add(key);
+          final pName = (tb['passenger_name'] ?? tb['passengerName'] ?? 'Counter Passenger').toString();
+          final pPhone = (tb['passenger_phone'] ?? tb['passengerPhone'] ?? '').toString();
+          final pCnic = (tb['passenger_cnic'] ?? tb['passengerCnic'] ?? '').toString();
+          final fare = (tb['fare'] as num?)?.toDouble() ?? 0.0;
+          final tCity = (tb['terminal_city'] ?? tb['terminalCity'] ?? '').toString();
+          final tName = (tb['terminal_name'] ?? tb['terminalName'] ?? '').toString();
+          final aName = (tb['agent_name'] ?? tb['agentName'] ?? '').toString();
+          final date = (tb['booking_date'] ?? tb['bookingDate'] ?? tb['created_at'] ?? '').toString();
+
+          enriched.add({
+            'bookingId': tb['id'],
+            'seatNumber': seatsStr,
+            'passengerGender': 'Counter',
+            'bookingDate': date,
+            'status': tb['status'] ?? 'Confirmed',
+            'userId': 0,
+            'busId': bId,
+            'busName': tb['busName'] ?? 'BusVerse Express',
+            'busNumber': tb['busNumber'] ?? 'BV-Fleet',
+            'fromCity': tb['fromCity'] ?? tCity,
+            'toCity': tb['toCity'] ?? '',
+            'routeVia': tb['routeVia'] ?? '',
+            'travelDate': tb['travelDate'] ?? date,
+            'time': tb['time'] ?? '',
+            'busClass': tb['busClass'] ?? 'Executive',
+            'fare': fare,
+            'passengerName': pName,
+            'passengerPhone': pPhone,
+            'passengerCnic': pCnic,
+            'cnic': pCnic,
+            'phone': pPhone,
+            'isTerminal': true,
+            'channel': 'POS Counter',
+            'terminalCity': tCity,
+            'terminalName': tName,
+            'agentName': aName,
+            'terminal': tb,
+          });
+        }
+      }
 
       if (mounted) {
         setState(() {
@@ -294,8 +301,14 @@ class _ViewAllBookingScreenState extends State<ViewAllBookingScreen> {
     final payment = b['payment'] as Map<String, dynamic>?;
     final terminal = b['terminal'] as Map<String, dynamic>?;
     final String passengerName = (b['passengerName'] ?? '').toString().trim();
-    final String seat = (b['seatNumber'] ?? '').toString();
-    final double fare = (b['fare'] as num?)?.toDouble() ?? (payment?['amount'] as num?)?.toDouble() ?? 0.0;
+    final String seat = (b['seatNumber'] ?? b['seat_number'] ?? b['seats'] ?? '').toString().trim();
+    double fare = (b['fare'] as num?)?.toDouble() ?? 0.0;
+    if (fare == 0.0 && payment != null) {
+      final pAmount = (payment['amount'] as num?)?.toDouble() ?? 0.0;
+      final seatsStr = (payment['seats'] ?? '').toString();
+      final seatsCount = seatsStr.contains(',') ? seatsStr.split(',').where((s) => s.trim().isNotEmpty).length : 1;
+      fare = seatsCount > 1 ? (pAmount / seatsCount) : pAmount;
+    }
     final String method = (payment?['paymentMethod'] ?? terminal?['paymentMethod'] ?? (b['isTerminal'] == true ? 'Cash / Counter POS' : 'Paid Online')).toString();
     final String bookingTimestamp = _formatBookingDateTime(b);
     final String busTime = (b['time'] ?? 'N/A').toString();
@@ -305,6 +318,10 @@ class _ViewAllBookingScreenState extends State<ViewAllBookingScreen> {
     final String displayTerminal = terminalName.isNotEmpty
         ? (terminalCity.isNotEmpty ? "$terminalCity • $terminalName" : terminalName)
         : (terminalCity.isNotEmpty ? "$terminalCity Terminal" : "POS Counter");
+
+    final String displaySeat = seat.isNotEmpty
+        ? (seat.toLowerCase().startsWith('seat') ? seat : (seat.startsWith('#') ? "Seat $seat" : "Seat #$seat"))
+        : "Seat #N/A";
 
     showModalBottomSheet(
       context: context,
@@ -341,7 +358,7 @@ class _ViewAllBookingScreenState extends State<ViewAllBookingScreen> {
             ),
             const SizedBox(height: 14),
             _buildReceiptRow("Passenger", passengerName.isNotEmpty ? passengerName : 'Guest Passenger'),
-            _buildReceiptRow("Seat Number", "Seat #$seat"),
+            _buildReceiptRow("Seat Number", displaySeat),
             _buildReceiptRow("Route", "${b['fromCity'] ?? ''} → ${b['toCity'] ?? ''}"),
             _buildReceiptRow("Payment Method", method),
             _buildReceiptRow("Total Paid", "Rs. ${fare.toStringAsFixed(0)}", isHighlight: true),
@@ -718,7 +735,7 @@ class _ViewAllBookingScreenState extends State<ViewAllBookingScreen> {
         ? (b['passengerName'] ?? '').toString().trim()
         : (b['userEmail'] ?? 'Guest Passenger');
 
-    final dynamic seat = b['seatNumber'] ?? '';
+    final String seat = (b['seatNumber'] ?? b['seat_number'] ?? b['seats'] ?? '').toString().trim();
     final String fromCity = b['fromCity'] ?? '';
     final String toCity = b['toCity'] ?? '';
     final String time = b['time'] ?? '';
@@ -726,6 +743,10 @@ class _ViewAllBookingScreenState extends State<ViewAllBookingScreen> {
     final double fare = (b['fare'] as num?)?.toDouble() ?? 0.0;
     final bool isTerminal = b['isTerminal'] == true;
     final String bookingTimestamp = _formatBookingDateTime(b);
+
+    final String displaySeatBadge = seat.isNotEmpty
+        ? (seat.toLowerCase().startsWith('seat') ? seat : (seat.startsWith('#') ? "Seat $seat" : "Seat #$seat"))
+        : "Seat #N/A";
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -800,7 +821,7 @@ class _ViewAllBookingScreenState extends State<ViewAllBookingScreen> {
                   border: Border.all(color: primaryBlue.withValues(alpha: 0.2)),
                 ),
                 child: Text(
-                  "Seat $seat",
+                  displaySeatBadge,
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w800,

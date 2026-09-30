@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../database/db_helper.dart';
-import '../../services/supabase_service.dart';
 
 class FeedbackScreen extends StatefulWidget {
   final int userId;
@@ -83,18 +82,15 @@ class _FeedbackScreenState extends State<FeedbackScreen> with SingleTickerProvid
     final String fullMessage = "[$_rating Stars | $_selectedAspect] $text";
     final String userEmail = FirebaseAuth.instance.currentUser?.email ?? "User#${widget.userId}";
 
-    // 1. Supabase Cloud Sync
+    // Save Feedback to Supabase
     try {
-      await SupabaseService.instance.addFeedback(userEmail, fullMessage);
+      await DBHelper.instance.insertFeedback(
+        userId: widget.userId,
+        message: fullMessage,
+        userEmail: userEmail,
+      );
     } catch (e) {
-      print("Supabase feedback error: $e");
-    }
-
-    // 2. Local SQLite Sync
-    try {
-      await DBHelper.instance.insertFeedback(userId: widget.userId, message: fullMessage);
-    } catch (e) {
-      print("SQLite feedback error: $e");
+      debugPrint("Feedback save error: $e");
     }
 
     if (!mounted) return;
@@ -335,6 +331,20 @@ class _FeedbackScreenState extends State<FeedbackScreen> with SingleTickerProvid
       }
     }
 
+    final String rawAdminReply = (f['admin_reply'] ?? f['adminReply'] ?? '').toString().trim();
+    String adminReply = (rawAdminReply.toLowerCase() == 'null') ? '' : rawAdminReply;
+    if (adminReply.isEmpty && comment.contains('\n[Admin Response]:')) {
+      final parts = comment.split('\n[Admin Response]:');
+      if (parts.length > 1) {
+        adminReply = parts.sublist(1).join('\n[Admin Response]:').trim();
+      }
+    }
+    if (comment.contains('\n[Admin Response]:')) {
+      comment = comment.split('\n[Admin Response]:').first.trim();
+    }
+    if (adminReply.toLowerCase() == 'null') adminReply = '';
+    if (comment.toLowerCase() == 'null') comment = '';
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -343,7 +353,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> with SingleTickerProvid
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.015), blurRadius: 6, offset: const Offset(0, 2)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.015), blurRadius: 6, offset: const Offset(0, 2)),
         ],
       ),
       child: Column(
@@ -372,6 +382,37 @@ class _FeedbackScreenState extends State<FeedbackScreen> with SingleTickerProvid
             comment,
             style: const TextStyle(fontSize: 13, color: darkText, fontWeight: FontWeight.w600, height: 1.3),
           ),
+          if (adminReply.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FDF4),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFBBF7D0)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.verified_user_rounded, color: Color(0xFF16A34A), size: 14),
+                      SizedBox(width: 5),
+                      Text(
+                        "BusVerse Team Response",
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF16A34A)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    adminReply,
+                    style: const TextStyle(fontSize: 12.5, color: darkText, height: 1.35),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

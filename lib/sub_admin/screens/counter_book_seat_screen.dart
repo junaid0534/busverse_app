@@ -76,12 +76,56 @@ class _CounterBookSeatScreenState extends State<CounterBookSeatScreen> {
     }
   }
 
+  int _getAdjacentSeat(int seatNum) {
+    if (seatNum % 4 == 1) return seatNum + 1;
+    if (seatNum % 4 == 2) return seatNum - 1;
+    if (seatNum % 4 == 3) return seatNum + 1;
+    if (seatNum % 4 == 0) return seatNum - 1;
+    return -1;
+  }
+
+  bool _validateGenderCompatibility(int seatNum, String chosenGender) {
+    final partnerSeat = _getAdjacentSeat(seatNum);
+    if (partnerSeat <= 0) return true;
+
+    // 1. Check if partner seat is already booked by another passenger
+    if (_alreadyBookedSeatsMap.containsKey(partnerSeat)) {
+      final partnerGender = _alreadyBookedSeatsMap[partnerSeat];
+      if (partnerGender == 'F' && chosenGender == 'M') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Adjacent Seat #$partnerSeat is already booked by a Female. A Male cannot sit beside an unrelated Female."),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return false;
+      }
+      if (partnerGender == 'M' && chosenGender == 'F') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Adjacent Seat #$partnerSeat is already booked by a Male. A Female cannot sit beside an unrelated Male."),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return false;
+      }
+    }
+
+    // 2. If partner seat is in current booking transaction (_selectedSeats),
+    // same person / family booking male & female together is ALLOWED.
+    return true;
+  }
+
   void _onSeatTap(int seatNum) {
     if (_alreadyBookedSeatsMap.containsKey(seatNum)) {
+      final gName = _alreadyBookedSeatsMap[seatNum] == 'F' ? 'Female' : 'Male';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Seat #$seatNum is already booked (${_alreadyBookedSeatsMap[seatNum] == 'F' ? 'Female' : 'Male'})"),
-          duration: const Duration(seconds: 1),
+          content: Text("Seat #$seatNum is already booked ($gName)"),
+          backgroundColor: _alreadyBookedSeatsMap[seatNum] == 'F' ? femaleColor : maleColor,
+          duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -140,6 +184,7 @@ class _CounterBookSeatScreenState extends State<CounterBookSeatScreen> {
                     icon: const Icon(Icons.male_rounded, size: 19),
                     label: const Text("Male (M)", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                     onPressed: () {
+                      if (!_validateGenderCompatibility(seatNum, "M")) return;
                       setState(() {
                         _selectedSeats.add(seatNum);
                         _seatGenderMap[seatNum] = "M";
@@ -161,6 +206,7 @@ class _CounterBookSeatScreenState extends State<CounterBookSeatScreen> {
                     icon: const Icon(Icons.female_rounded, size: 19),
                     label: const Text("Female (F)", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                     onPressed: () {
+                      if (!_validateGenderCompatibility(seatNum, "F")) return;
                       setState(() {
                         _selectedSeats.add(seatNum);
                         _seatGenderMap[seatNum] = "F";
@@ -337,19 +383,29 @@ class _CounterBookSeatScreenState extends State<CounterBookSeatScreen> {
                       ),
                       onPressed: _selectedSeats.isEmpty
                           ? null
-                          : () {
-                              Navigator.push(
+                          : () async {
+                              final seatsCopy = List<int>.from(_selectedSeats);
+                              final gendersCopy = Map<int, String>.from(_seatGenderMap);
+                              await Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (_) => CounterPassengerDetailScreen(
                                     bus: widget.bus,
-                                    selectedSeats: _selectedSeats,
-                                    seatGenderMap: _seatGenderMap,
+                                    selectedSeats: seatsCopy,
+                                    seatGenderMap: gendersCopy,
                                     selectedDate: widget.selectedDate,
                                     userProfile: widget.userProfile,
                                   ),
                                 ),
                               );
+                              if (mounted) {
+                                setState(() {
+                                  _selectedSeats.clear();
+                                  _seatGenderMap.clear();
+                                  _isLoadingSeats = true;
+                                });
+                                await _loadBookedSeats();
+                              }
                             },
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../database/db_helper.dart';
-import '../../services/supabase_service.dart';
 
 class ComplainScreen extends StatefulWidget {
   final int userId;
@@ -87,18 +86,15 @@ class _ComplainScreenState extends State<ComplainScreen> with SingleTickerProvid
     final String fullMessage = "[$_selectedCategory] ${busInfo.isNotEmpty ? 'Bus/Ref: $busInfo | ' : ''}$details";
     final String userEmail = FirebaseAuth.instance.currentUser?.email ?? "User#${widget.userId}";
 
-    // 1. Supabase Cloud Sync
+    // Save Complaint to Supabase
     try {
-      await SupabaseService.instance.addComplain(userEmail, fullMessage);
+      await DBHelper.instance.insertComplain(
+        userId: widget.userId,
+        message: fullMessage,
+        userEmail: userEmail,
+      );
     } catch (e) {
-      print("Supabase complain error: $e");
-    }
-
-    // 2. Local SQLite Sync
-    try {
-      await DBHelper.instance.insertComplain(userId: widget.userId, message: fullMessage);
-    } catch (e) {
-      print("SQLite complain error: $e");
+      debugPrint("Complaint save error: $e");
     }
 
     if (!mounted) return;
@@ -325,6 +321,32 @@ class _ComplainScreenState extends State<ComplainScreen> with SingleTickerProvid
       }
     }
 
+    final String rawAdminReply = (c['admin_reply'] ?? c['adminReply'] ?? '').toString().trim();
+    String currentStatus = (c['status'] ?? 'Pending').toString();
+    String adminReply = (rawAdminReply.toLowerCase() == 'null') ? '' : rawAdminReply;
+
+    if (adminReply.isEmpty && details.contains('\n[Admin Response')) {
+      final idx = details.indexOf('\n[Admin Response');
+      final substring = details.substring(idx);
+      details = details.substring(0, idx).trim();
+
+      if (substring.contains(']:')) {
+        final colonIdx = substring.indexOf(']:');
+        final header = substring.substring(0, colonIdx);
+        if (header.contains('-')) {
+          currentStatus = header.split('-').last.trim();
+        }
+        adminReply = substring.substring(colonIdx + 2).trim();
+      }
+    }
+
+    if (adminReply.toLowerCase() == 'null') adminReply = '';
+    if (details.toLowerCase() == 'null') details = '';
+    if (currentStatus.toLowerCase() == 'null') currentStatus = 'Pending';
+
+    final bool isResolved = currentStatus.toLowerCase() == 'resolved';
+    final bool isInProgress = currentStatus.toLowerCase() == 'in progress' || currentStatus.toLowerCase() == 'investigating';
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -333,7 +355,7 @@ class _ComplainScreenState extends State<ComplainScreen> with SingleTickerProvid
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.015), blurRadius: 6, offset: const Offset(0, 2)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.015), blurRadius: 6, offset: const Offset(0, 2)),
         ],
       ),
       child: Column(
@@ -356,16 +378,34 @@ class _ComplainScreenState extends State<ComplainScreen> with SingleTickerProvid
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFEF3C7),
+                  color: isResolved
+                      ? const Color(0xFFDCFCE7)
+                      : (isInProgress ? const Color(0xFFFEF3C7) : const Color(0xFFFEE2E2)),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(Icons.access_time_rounded, size: 12, color: Color(0xFFD97706)),
-                    SizedBox(width: 4),
+                    Icon(
+                      isResolved
+                          ? Icons.check_circle_rounded
+                          : (isInProgress ? Icons.sync_problem_rounded : Icons.access_time_rounded),
+                      size: 12,
+                      color: isResolved
+                          ? const Color(0xFF16A34A)
+                          : (isInProgress ? const Color(0xFFD97706) : const Color(0xFFDC2626)),
+                    ),
+                    const SizedBox(width: 4),
                     Text(
-                      "UNDER REVIEW",
-                      style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: Color(0xFFD97706)),
+                      isResolved
+                          ? "RESOLVED"
+                          : (isInProgress ? "IN PROGRESS" : "UNDER REVIEW"),
+                      style: TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w800,
+                        color: isResolved
+                            ? const Color(0xFF16A34A)
+                            : (isInProgress ? const Color(0xFFD97706) : const Color(0xFFDC2626)),
+                      ),
                     ),
                   ],
                 ),
@@ -377,6 +417,45 @@ class _ComplainScreenState extends State<ComplainScreen> with SingleTickerProvid
             details,
             style: const TextStyle(fontSize: 13, color: darkText, fontWeight: FontWeight.w600, height: 1.3),
           ),
+          if (adminReply.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isResolved ? const Color(0xFFF0FDF4) : const Color(0xFFFFFBEB),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: isResolved ? const Color(0xFFBBF7D0) : const Color(0xFFFDE68A)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        isResolved ? Icons.verified_user_rounded : Icons.support_agent_rounded,
+                        color: isResolved ? const Color(0xFF16A34A) : const Color(0xFFD97706),
+                        size: 14,
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        "Support Resolution: $currentStatus",
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: isResolved ? const Color(0xFF16A34A) : const Color(0xFFD97706),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    adminReply,
+                    style: const TextStyle(fontSize: 12.5, color: darkText, height: 1.35),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 10),
           const Divider(color: Color(0xFFF1F5F9), height: 1),
           const SizedBox(height: 8),

@@ -107,7 +107,7 @@ class _CounterPassengerDetailScreenState extends State<CounterPassengerDetailScr
         setState(() => _isIssuing = false);
 
         // Open Ticket Receipt Slip Screen
-        Navigator.pushReplacement(
+        await Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => TicketReceiptSlipScreen(
@@ -127,6 +127,9 @@ class _CounterPassengerDetailScreenState extends State<CounterPassengerDetailScr
             ),
           ),
         );
+        if (mounted) {
+          Navigator.pop(context, true);
+        }
       }
     } catch (e) {
       debugPrint("Error issuing counter ticket: $e");

@@ -88,7 +88,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF388AF6).withOpacity(0.35),
+                              color: const Color(0xFF388AF6).withValues(alpha: 0.35),
                               blurRadius: 30,
                               offset: const Offset(0, 14),
                             ),
@@ -103,7 +103,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               child: Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.18),
+                                  color: Colors.white.withValues(alpha: 0.18),
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
@@ -118,17 +118,17 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                             Positioned(
                               top: 40,
                               left: 80,
-                              child: Icon(Icons.star, color: Colors.white.withOpacity(0.8), size: 10),
+                              child: Icon(Icons.star, color: Colors.white.withValues(alpha: 0.8), size: 10),
                             ),
                             Positioned(
                               top: 20,
                               right: 70,
-                              child: Icon(Icons.star, color: Colors.white.withOpacity(0.6), size: 14),
+                              child: Icon(Icons.star, color: Colors.white.withValues(alpha: 0.6), size: 14),
                             ),
                             Positioned(
                               top: 60,
                               right: 40,
-                              child: Icon(Icons.star, color: Colors.white.withOpacity(0.7), size: 8),
+                              child: Icon(Icons.star, color: Colors.white.withValues(alpha: 0.7), size: 8),
                             ),
 
                             // Glowing speed winds swirl
@@ -142,9 +142,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                   borderRadius: BorderRadius.circular(30),
                                   gradient: LinearGradient(
                                     colors: [
-                                      Colors.white.withOpacity(0.0),
-                                      Colors.white.withOpacity(0.25),
-                                      Colors.white.withOpacity(0.0),
+                                      Colors.white.withValues(alpha: 0.0),
+                                      Colors.white.withValues(alpha: 0.25),
+                                      Colors.white.withValues(alpha: 0.0),
                                     ],
                                   ),
                                 ),
@@ -171,7 +171,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                 decoration: BoxDecoration(
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.35),
+                                      color: Colors.black.withValues(alpha: 0.35),
                                       blurRadius: 28,
                                       spreadRadius: -4,
                                       offset: const Offset(0, 16),
@@ -253,7 +253,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF388AF6).withOpacity(0.45),
+                              color: const Color(0xFF388AF6).withValues(alpha: 0.45),
                               blurRadius: 20,
                               offset: const Offset(0, 8),
                             ),

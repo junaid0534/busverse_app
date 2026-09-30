@@ -158,12 +158,62 @@ class _CounterTicketBookingScreenState extends State<CounterTicketBookingScreen>
     }
   }
 
+  Future<void> _loadBookedSeats() async {
+    if (_selectedBus != null) {
+      await _loadBookedSeatsForBus(_selectedBus!);
+    }
+  }
+
+  int _getAdjacentSeat(int seatNum) {
+    if (seatNum % 4 == 1) return seatNum + 1;
+    if (seatNum % 4 == 2) return seatNum - 1;
+    if (seatNum % 4 == 3) return seatNum + 1;
+    if (seatNum % 4 == 0) return seatNum - 1;
+    return -1;
+  }
+
+  bool _validateGenderCompatibility(int seatNum, String chosenGender) {
+    final partnerSeat = _getAdjacentSeat(seatNum);
+    if (partnerSeat <= 0) return true;
+
+    // 1. Check if partner seat is already booked by another passenger
+    if (_alreadyBookedSeatsMap.containsKey(partnerSeat)) {
+      final partnerGender = _alreadyBookedSeatsMap[partnerSeat];
+      if (partnerGender == 'F' && chosenGender == 'M') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Adjacent Seat #$partnerSeat is already booked by a Female. A Male cannot sit beside an unrelated Female."),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return false;
+      }
+      if (partnerGender == 'M' && chosenGender == 'F') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Adjacent Seat #$partnerSeat is already booked by a Male. A Female cannot sit beside an unrelated Male."),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return false;
+      }
+    }
+
+    // 2. If partner seat is in the current booking transaction (_selectedSeats),
+    // same person / family booking male & female together is ALLOWED.
+    return true;
+  }
+
   void _onSeatTap(int seatNum) {
     if (_alreadyBookedSeatsMap.containsKey(seatNum)) {
+      final gName = _alreadyBookedSeatsMap[seatNum] == 'F' ? 'Female' : 'Male';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Seat #$seatNum is already booked (${_alreadyBookedSeatsMap[seatNum] == 'F' ? 'Female' : 'Male'})"),
-          duration: const Duration(seconds: 1),
+          content: Text("Seat #$seatNum is already booked ($gName)"),
+          backgroundColor: _alreadyBookedSeatsMap[seatNum] == 'F' ? femaleColor : maleColor,
+          duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -222,6 +272,7 @@ class _CounterTicketBookingScreenState extends State<CounterTicketBookingScreen>
                     icon: const Icon(Icons.male_rounded, size: 18),
                     label: const Text("Male (M)", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                     onPressed: () {
+                      if (!_validateGenderCompatibility(seatNum, "M")) return;
                       setState(() {
                         _selectedSeats.add(seatNum);
                         _seatGenderMap[seatNum] = "M";
@@ -243,6 +294,7 @@ class _CounterTicketBookingScreenState extends State<CounterTicketBookingScreen>
                     icon: const Icon(Icons.female_rounded, size: 18),
                     label: const Text("Female (F)", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                     onPressed: () {
+                      if (!_validateGenderCompatibility(seatNum, "F")) return;
                       setState(() {
                         _selectedSeats.add(seatNum);
                         _seatGenderMap[seatNum] = "F";
@@ -290,56 +342,47 @@ class _CounterTicketBookingScreenState extends State<CounterTicketBookingScreen>
           ? _selectedBus!.date
           : DateFormat('yyyy-MM-dd').format(_selectedDate);
 
-      // 1. Save Bookings into SQLite
-      for (int seat in _selectedSeats) {
-        final gender = _seatGenderMap[seat] ?? "M";
-        await DBHelper.instance.bookSeats(
-          busId: _selectedBus!.id!,
-          seats: [seat.toString()],
-          gender: gender,
-          date: travelDate,
-          userId: 0, // Walk-in counter passenger
-        );
-      }
-
-      // 2. Save Payment into SQLite
-      final paymentId = await DBHelper.instance.insertPayment(
+      // Insert into dedicated terminal_bookings and terminal_payments tables
+      final paymentId = await DBHelper.instance.insertTerminalBooking(
         busId: _selectedBus!.id!,
-        seats: _selectedSeats,
+        seatNumbers: _selectedSeats,
+        seatGenders: _seatGenderMap,
         passengerName: passengerName,
-        passengerEmail: "counter.$passengerPhone@busverse.pos",
-        paymentMethod: _paymentMethod,
-        accountNumber: "COUNTER-POS",
-        date: travelDate,
-        amount: _totalFare,
-        passengerCnic: passengerCnic,
         passengerPhone: passengerPhone,
+        passengerCnic: passengerCnic,
+        totalAmount: _totalFare,
+        paymentMethod: _paymentMethod,
+        terminalCity: terminalCity,
+        terminalName: terminalName,
+        agentName: agentName,
+        bookingDate: travelDate,
       );
 
-      // 3. Sync with Supabase (if available)
-      try {
-        await SupabaseService.instance.createBooking(
-          firebaseUid: "terminal_agent",
-          userEmail: "counter.$passengerPhone@busverse.pos",
-          busId: _selectedBus!.id!,
-          seatNumbers: _selectedSeats,
-          seatGenders: _seatGenderMap,
-          bookingDate: travelDate,
-        );
-      } catch (_) {}
-
       if (mounted) {
+        final bookedSeatsCopy = List<int>.from(_selectedSeats);
+        final genderMapCopy = Map<int, String>.from(_seatGenderMap);
+
+        // Reset state so next booking is clean
+        _selectedSeats.clear();
+        _seatGenderMap.clear();
+        _passengerNameCtrl.clear();
+        _passengerPhoneCtrl.clear();
+        _passengerCnicCtrl.clear();
+        if (_selectedBus != null) {
+          _loadBookedSeatsForBus(_selectedBus!);
+        }
+
         setState(() => _isIssuingTicket = false);
 
         // Open Ticket Receipt Slip Screen
-        Navigator.pushReplacement(
+        Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => TicketReceiptSlipScreen(
               ticketId: paymentId > 0 ? paymentId : DateTime.now().millisecondsSinceEpoch % 100000,
               bus: _selectedBus!,
-              selectedSeats: List.from(_selectedSeats),
-              seatGenderMap: Map.from(_seatGenderMap),
+              selectedSeats: bookedSeatsCopy,
+              seatGenderMap: genderMapCopy,
               passengerName: passengerName,
               passengerPhone: passengerPhone,
               passengerCnic: passengerCnic,

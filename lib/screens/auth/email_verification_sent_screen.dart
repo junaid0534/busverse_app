@@ -151,7 +151,7 @@ class _EmailVerificationSentScreenState extends State<EmailVerificationSentScree
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF018A30).withOpacity(0.2),
+                      color: const Color(0xFF018A30).withValues(alpha: 0.2),
                       blurRadius: 20,
                       offset: const Offset(0, 8),
                     ),

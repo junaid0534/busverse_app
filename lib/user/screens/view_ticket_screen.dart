@@ -71,7 +71,15 @@ class _ViewTicketScreenState extends State<ViewTicketScreen> {
       busClass = busObj["busClass"] ?? "Executive";
     }
 
-    final List seats = p["seats"] ?? [];
+    List seats = [];
+    if (p["seats"] is List && (p["seats"] as List).isNotEmpty) {
+      seats = (p["seats"] as List).toList();
+    } else {
+      final s = (p["seatNumber"] ?? p["seat_number"] ?? p["seatNumbers"] ?? p["seat_numbers"] ?? p["seats"] ?? "").toString();
+      if (s.isNotEmpty) {
+        seats = s.split(',').map((e) => e.replaceAll('#', '').replaceAll('Seat', '').trim()).where((e) => e.isNotEmpty).toList();
+      }
+    }
     final String paymentMethod = p["paymentMethod"] ?? "Paid Online";
     final String fromCity = (p["fromCity"] != null && p["fromCity"].toString().trim().isNotEmpty)
         ? p["fromCity"].toString().trim()
@@ -374,8 +382,14 @@ class _ViewTicketScreenState extends State<ViewTicketScreen> {
                         children: [
                           _ticketRow("Passenger Name", passengerName),
                           _ticketRow("CNIC Number", passengerCnic),
-                          _ticketRow("Phone Number", passengerPhone),
-                          _ticketRow("Booked Seats", seats.map((s) => "Seat #$s").join(", ")),
+                          if (passengerPhone.isNotEmpty && passengerPhone != "N/A")
+                            _ticketRow("Phone Number", passengerPhone),
+                          _ticketRow(
+                            "Booked Seats",
+                            seats.isNotEmpty
+                                ? seats.map((s) => "Seat #$s").join(", ")
+                                : (p["seatNumber"]?.toString().isNotEmpty == true ? "Seat #${p["seatNumber"]}" : "N/A"),
+                          ),
                           _ticketRow("Payment Method", paymentMethod),
                           if (busNumber.isNotEmpty) _ticketRow("Bus Number", busNumber),
                           if (bookingTimeFormatted.isNotEmpty) _ticketRow("Booked On", bookingTimeFormatted),

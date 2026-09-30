@@ -199,7 +199,7 @@ class _LiveFleetRadarScreenState extends State<LiveFleetRadarScreen> {
                                 border: Border.all(color: Colors.white, width: 2.5),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: markerColor.withOpacity(0.4),
+                                    color: markerColor.withValues(alpha: 0.4),
                                     blurRadius: 8,
                                     offset: const Offset(0, 3),
                                   ),
@@ -270,7 +270,7 @@ class _LiveFleetRadarScreenState extends State<LiveFleetRadarScreen> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 6,
               offset: const Offset(0, 2),
             ),
@@ -305,7 +305,7 @@ class _LiveFleetRadarScreenState extends State<LiveFleetRadarScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.14),
+            color: Colors.black.withValues(alpha: 0.14),
             blurRadius: 18,
             offset: const Offset(0, 4),
           ),
@@ -320,7 +320,7 @@ class _LiveFleetRadarScreenState extends State<LiveFleetRadarScreen> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: primaryBlue.withOpacity(0.1),
+                  color: primaryBlue.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(Icons.directions_bus_rounded, color: primaryBlue, size: 22),

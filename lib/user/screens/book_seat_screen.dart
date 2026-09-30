@@ -286,7 +286,7 @@ class _BookSeatScreenState extends State<BookSeatScreen> {
                     border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
+                        color: Colors.black.withValues(alpha: 0.04),
                         blurRadius: 14,
                         offset: const Offset(0, 6),
                       ),
@@ -400,7 +400,7 @@ class _BookSeatScreenState extends State<BookSeatScreen> {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 10,
                   offset: const Offset(0, -3),
                 ),
@@ -456,21 +456,30 @@ class _BookSeatScreenState extends State<BookSeatScreen> {
                       ),
                       onPressed: selectedSeats.isEmpty
                           ? null
-                          : () {
+                          : () async {
                               final String travelDate = (widget.bus.date.isNotEmpty && widget.bus.date != "0000-00-00")
                                    ? widget.bus.date
                                    : dateKey;
-                              Navigator.pushNamed(
+                              final seatsCopy = List<int>.from(selectedSeats);
+                              final genderCopy = Map<int, String>.from(seatGender);
+                              await Navigator.pushNamed(
                                 context,
                                 '/passenger_details',
                                 arguments: {
                                   'bus': widget.bus,
-                                  'selectedSeats': selectedSeats,
-                                  'genderMap': seatGender,
+                                  'selectedSeats': seatsCopy,
+                                  'genderMap': genderCopy,
                                   'date': travelDate,
                                   'userId': widget.userId,
                                 },
                               );
+                              if (mounted) {
+                                setState(() {
+                                  selectedSeats.clear();
+                                  seatGender.clear();
+                                });
+                                loadBookedSeats();
+                              }
                             },
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
@@ -516,7 +525,7 @@ class _BookSeatScreenState extends State<BookSeatScreen> {
 
     if (isBooked) {
       bgColor = bookedGender == "F" ? const Color(0xFFFCE7F3) : const Color(0xFFE2E8F0);
-      borderColor = bookedGender == "F" ? femaleColor.withOpacity(0.4) : const Color(0xFF94A3B8);
+      borderColor = bookedGender == "F" ? femaleColor.withValues(alpha: 0.4) : const Color(0xFF94A3B8);
       contentColor = bookedGender == "F" ? femaleColor : subText;
       seatIcon = Icons.block_rounded;
     } else if (isSelected) {
@@ -538,7 +547,7 @@ class _BookSeatScreenState extends State<BookSeatScreen> {
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: (selectedGender == "F" ? femaleColor : primaryBlue).withOpacity(0.25),
+                    color: (selectedGender == "F" ? femaleColor : primaryBlue).withValues(alpha: 0.25),
                     blurRadius: 5,
                     offset: const Offset(0, 2),
                   ),

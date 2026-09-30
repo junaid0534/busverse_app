@@ -177,19 +177,19 @@ class _AddEditDriverScreenState extends State<AddEditDriverScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: primaryBlue.withOpacity(0.08),
+                  color: primaryBlue.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: primaryBlue.withOpacity(0.2)),
+                  border: Border.all(color: primaryBlue.withValues(alpha: 0.2)),
                 ),
-                child: Row(
+                child: const Row(
                   children: [
-                    const Icon(Icons.admin_panel_settings_rounded, color: primaryBlue, size: 28),
-                    const SizedBox(width: 12),
+                    Icon(Icons.admin_panel_settings_rounded, color: primaryBlue, size: 28),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             "Admin Controlled Login",
                             style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: darkText),
                           ),

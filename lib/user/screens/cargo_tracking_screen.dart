@@ -77,14 +77,14 @@ class CargoTrackingScreen extends StatelessWidget {
                   color: Colors.green.shade600,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Column(
+                child: const Column(
                   children: [
-                    const Text(
+                    Text(
                       "No More Calls!",
                       style: TextStyle(color: Color.fromRGBO(55, 62, 191, 1), fontSize: 28, fontWeight: FontWeight.bold),
                     ),
-                    const SizedBox(height: 8),
-                    const Text(
+                    SizedBox(height: 8),
+                    Text(
                       "Now you can track your consignment Online. See all details about your Parcel.",
                       style: TextStyle(color: Colors.white70, fontSize: 12),
                       textAlign: TextAlign.center,

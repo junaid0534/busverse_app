@@ -193,23 +193,23 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    Expanded(
+                    const Expanded(
                       child: Text.rich(
                         TextSpan(
                           text: "I accept the ",
-                          style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                          style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                           children: [
                             TextSpan(
                               text: "Terms",
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: Color(0xFF388AF6),
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
-                            const TextSpan(text: " and "),
+                            TextSpan(text: " and "),
                             TextSpan(
                               text: "Privacy Policy",
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: Color(0xFF388AF6),
                                 fontWeight: FontWeight.w700,
                               ),

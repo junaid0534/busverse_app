@@ -83,7 +83,7 @@ class _SupportScreenState extends State<SupportScreen> {
                 borderRadius: BorderRadius.circular(18),
                 boxShadow: [
                   BoxShadow(
-                    color: primaryBlue.withOpacity(0.28),
+                    color: primaryBlue.withValues(alpha: 0.28),
                     blurRadius: 12,
                     offset: const Offset(0, 5),
                   ),
@@ -106,7 +106,7 @@ class _SupportScreenState extends State<SupportScreen> {
                       Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.18),
+                          color: Colors.white.withValues(alpha: 0.18),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Icon(Icons.headset_mic_rounded, color: Colors.white, size: 20),
@@ -317,7 +317,7 @@ class _SupportScreenState extends State<SupportScreen> {
           border: Border.all(color: const Color(0xFFE2E8F0)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.02),
+              color: Colors.black.withValues(alpha: 0.02),
               blurRadius: 6,
               offset: const Offset(0, 2),
             ),
@@ -353,7 +353,7 @@ class _SupportScreenState extends State<SupportScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: color, size: 22),

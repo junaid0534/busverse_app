@@ -17,7 +17,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen>
     with SingleTickerProviderStateMixin {
   bool _isTripActive = false;
   double _currentSpeed = 0.0;
-  String _currentNextStop = "Sukheki Rest Stop";
+  final String _currentNextStop = "Sukheki Rest Stop";
   int _delayMinutes = 0;
 
   // Passenger Manifest
@@ -230,7 +230,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen>
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF1E3C72).withOpacity(0.3),
+                    color: const Color(0xFF1E3C72).withValues(alpha: 0.3),
                     blurRadius: 16,
                     offset: const Offset(0, 6),
                   ),
@@ -376,7 +376,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen>
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: primaryBlue.withOpacity(0.1),
+                    color: primaryBlue.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
@@ -420,14 +420,14 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen>
                           return Container(
                             margin: const EdgeInsets.only(bottom: 8),
                             decoration: BoxDecoration(
-                              color: isBoarded ? emeraldGreen.withOpacity(0.06) : Colors.white,
+                              color: isBoarded ? emeraldGreen.withValues(alpha: 0.06) : Colors.white,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: isBoarded ? emeraldGreen.withOpacity(0.3) : const Color(0xFFE2E8F0)),
+                              border: Border.all(color: isBoarded ? emeraldGreen.withValues(alpha: 0.3) : const Color(0xFFE2E8F0)),
                             ),
                             child: ListTile(
                               leading: CircleAvatar(
                                 radius: 18,
-                                backgroundColor: isBoarded ? emeraldGreen : primaryBlue.withOpacity(0.1),
+                                backgroundColor: isBoarded ? emeraldGreen : primaryBlue.withValues(alpha: 0.1),
                                 child: Text(
                                   "#$seat",
                                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: isBoarded ? Colors.white : primaryBlue),

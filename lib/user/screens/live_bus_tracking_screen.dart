@@ -215,7 +215,7 @@ class _LiveBusTrackingScreenState extends State<LiveBusTrackingScreen>
                     Polyline(
                       points: _routeWaypoints,
                       strokeWidth: 9.0,
-                      color: primaryBlue.withOpacity(0.25),
+                      color: primaryBlue.withValues(alpha: 0.25),
                     ),
                     Polyline(
                       points: _routeWaypoints,
@@ -271,7 +271,7 @@ class _LiveBusTrackingScreenState extends State<LiveBusTrackingScreen>
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.12),
+                          color: Colors.black.withValues(alpha: 0.12),
                           blurRadius: 8,
                           offset: const Offset(0, 3),
                         ),
@@ -289,11 +289,11 @@ class _LiveBusTrackingScreenState extends State<LiveBusTrackingScreen>
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.95),
+                        color: Colors.white.withValues(alpha: 0.95),
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
+                            color: Colors.black.withValues(alpha: 0.1),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -336,7 +336,7 @@ class _LiveBusTrackingScreenState extends State<LiveBusTrackingScreen>
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: emeraldGreen.withOpacity(0.12),
+                              color: emeraldGreen.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Row(
@@ -435,7 +435,7 @@ class _LiveBusTrackingScreenState extends State<LiveBusTrackingScreen>
               height: 52 * _pulseAnimation.value,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: primaryBlue.withOpacity(0.22),
+                color: primaryBlue.withValues(alpha: 0.22),
               ),
             ),
             // Inner Circle with Rotation Heading
@@ -453,7 +453,7 @@ class _LiveBusTrackingScreenState extends State<LiveBusTrackingScreen>
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: primaryBlue.withOpacity(0.4),
+                      color: primaryBlue.withValues(alpha: 0.4),
                       blurRadius: 8,
                       offset: const Offset(0, 3),
                     ),
@@ -485,7 +485,7 @@ class _LiveBusTrackingScreenState extends State<LiveBusTrackingScreen>
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: color.withOpacity(0.4),
+                color: color.withValues(alpha: 0.4),
                 blurRadius: 6,
                 offset: const Offset(0, 2),
               ),
@@ -512,7 +512,7 @@ class _LiveBusTrackingScreenState extends State<LiveBusTrackingScreen>
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.12),
+            color: Colors.black.withValues(alpha: 0.12),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -537,7 +537,7 @@ class _LiveBusTrackingScreenState extends State<LiveBusTrackingScreen>
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.12),
+            color: Colors.black.withValues(alpha: 0.12),
             blurRadius: 20,
             offset: const Offset(0, -4),
           ),
@@ -564,7 +564,7 @@ class _LiveBusTrackingScreenState extends State<LiveBusTrackingScreen>
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: primaryBlue.withOpacity(0.1),
+                  color: primaryBlue.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: const Icon(Icons.near_me_rounded, color: primaryBlue, size: 24),
@@ -676,7 +676,7 @@ class _LiveBusTrackingScreenState extends State<LiveBusTrackingScreen>
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: _isSimulating ? emeraldGreen.withOpacity(0.12) : Colors.grey.shade200,
+                      color: _isSimulating ? emeraldGreen.withValues(alpha: 0.12) : Colors.grey.shade200,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
@@ -725,9 +725,9 @@ class _LiveBusTrackingScreenState extends State<LiveBusTrackingScreen>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.06),
+          color: color.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.15)),
+          border: Border.all(color: color.withValues(alpha: 0.15)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -739,7 +739,7 @@ class _LiveBusTrackingScreenState extends State<LiveBusTrackingScreen>
                 Expanded(
                   child: Text(
                     label,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 8.5,
                       fontWeight: FontWeight.w700,
                       color: subText,
@@ -753,7 +753,7 @@ class _LiveBusTrackingScreenState extends State<LiveBusTrackingScreen>
             const SizedBox(height: 4),
             Text(
               value,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 13.5,
                 fontWeight: FontWeight.w700,
                 color: darkText,
